@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Change Password - Yash Body Grow Gym</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+
+<body>
+
+  <nav class="navbar">
+    <div class="container">
+      <a href="#" id="home-link" class="logo">YASH<span> BODY GROW</span></a>
+      <div class="nav-links">
+        <span id="user-name" style="opacity:.8;font-size:14px;"></span>
+        <a href="#" id="logout-link" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff;">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="auth-wrap" style="background:var(--light);">
+    <div class="auth-card">
+      <h2>Change Password</h2>
+      <p class="sub">Update your account password</p>
+
+      <div id="error-box" class="error-msg"></div>
+      <div id="success-box" class="success-msg"></div>
+
+      <form id="change-form">
+        <div class="form-group">
+          <label>Current Password</label>
+          <input type="password" id="current-password" required />
+        </div>
+        <div class="form-group">
+          <label>New Password</label>
+          <input type="password" id="new-password" minlength="6" required />
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Update Password</button>
+      </form>
+
+      <p class="auth-footer"><a id="back-link" href="#" style="color:var(--primary);font-weight:600;">&larr; Back to
+          dashboard</a></p>
+    </div>
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/admin.js"></script>
+  <script>
+    if (!Auth.isLoggedIn()) window.location.href = 'login.html';
+
+    const dashboardPath = homeForRole(Auth.getUser());
+    document.getElementById('home-link').href = dashboardPath;
+    document.getElementById('back-link').href = dashboardPath;
+    document.getElementById('user-name').textContent = Auth.getUser()?.name || '';
+    document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+    const errorBox = document.getElementById('error-box');
+    const successBox = document.getElementById('success-box');
+    const submitBtn = document.getElementById('submit-btn');
+
+    document.getElementById('change-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideMessage(errorBox);
+      hideMessage(successBox);
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Updating...';
+
+      try {
+        await api.put('/auth/change-password', {
+          currentPassword: document.getElementById('current-password').value,
+          newPassword: document.getElementById('new-password').value
+        });
+        showMessage(successBox, 'Password updated successfully.', false);
+        e.target.reset();
+      } catch (err) {
+        showMessage(errorBox, err.message);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Update Password';
+      }
+    });
+  </script>
+</body>
+
+</html>

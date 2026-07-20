@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard - Yash Body Grow Gym</title>
+  <link rel="stylesheet" href="../../css/style.css" />
+</head>
+
+<body>
+
+  <nav class="navbar">
+    <div class="container">
+      <a href="dashboard.html" class="logo">YASH<span> BODY GROW</span> <small
+          style="font-size:12px;opacity:.6;">ADMIN</small></a>
+      <div class="nav-links">
+        <span id="admin-name" style="opacity:.8;font-size:14px;"></span>
+        <a href="#" id="logout-link" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff;">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="dash-layout">
+    <aside class="sidebar">
+      <a href="dashboard.html" class="active">Dashboard</a>
+      <a href="members.html">Members</a>
+      <a href="trainers.html">Trainers</a>
+      <a href="plans.html">Membership Plans</a>
+      <a href="attendance.html">Attendance</a>
+      <a href="payments.html">Payments</a>
+      <a href="workouts.html">Workout Plans</a>
+      <a href="diets.html">Diet Plans</a>
+      <a href="progress.html">Progress Tracking</a>
+      <a href="schedule.html">Trainer Schedules</a>
+      <a href="gallery.html">Gallery</a>
+      <a href="testimonials.html">Testimonials</a>
+      <a href="messages.html">Enquiries</a>
+      <a href="notifications.html">Notifications</a>
+      <a href="reports.html">Reports</a>
+      <a href="../settings.html">Change Password</a>
+    </aside>
+
+    <main class="main-content">
+      <div class="page-header">
+        <h1>Dashboard</h1>
+      </div>
+
+      <div class="stats-row" id="stats-row">
+        <div class="empty-state">Loading stats...</div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:14px;">Quick Actions</h3>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <a href="members.html" class="btn btn-primary btn-sm">+ Add Member</a>
+          <a href="trainers.html" class="btn btn-dark btn-sm">+ Add Trainer</a>
+          <a href="plans.html" class="btn btn-dark btn-sm">+ Add Plan</a>
+          <a href="attendance.html" class="btn btn-dark btn-sm">Mark Attendance</a>
+          <a href="payments.html" class="btn btn-dark btn-sm">Record Payment</a>
+          <a href="gym-qr.html" class="btn btn-primary btn-sm" style="background:#2ecc71;">🖨️ Print Gym QR</a>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="../../js/api.js"></script>
+  <script src="../../js/admin.js"></script>
+  <script>
+    requireAdmin();
+    document.getElementById('admin-name').textContent = Auth.getUser()?.name || '';
+    document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+    async function loadStats() {
+      const el = document.getElementById('stats-row');
+      try {
+        const s = await api.get('/dashboard/stats');
+        const today = new Date().toISOString().substring(0, 10);
+        el.innerHTML = `
+        <a href="members.html" class="stat-card accent" style="display:block;text-decoration:none;color:inherit;">
+          <div class="label">Total Members</div><div class="value">${s.totalMembers}</div>
+        </a>
+        <a href="members.html?status=active" class="stat-card" style="display:block;text-decoration:none;color:inherit;">
+          <div class="label">Active Members</div><div class="value">${s.activeMembers}</div>
+        </a>
+        <a href="members.html?status=expired" class="stat-card" style="display:block;text-decoration:none;color:inherit;">
+          <div class="label">Expired Members</div><div class="value">${s.expiredMembers}</div>
+        </a>
+        <a href="trainers.html" class="stat-card" style="display:block;text-decoration:none;color:inherit;">
+          <div class="label">Trainers</div><div class="value">${s.totalTrainers}</div>
+        </a>
+        <a href="plans.html" class="stat-card" style="display:block;text-decoration:none;color:inherit;">
+          <div class="label">Membership Plans</div><div class="value">${s.totalPlans}</div>
+        </a>
+        <a href="payments.html" class="stat-card accent" style="display:block;text-decoration:none;color:inherit;">
+          <div class="label">Total Revenue</div><div class="value">${formatCurrency(s.revenue)}</div>
+        </a>
+        <a href="payments.html?status=pending" class="stat-card" style="display:block;text-decoration:none;color:inherit;">
+          <div class="label">Pending Payments</div><div class="value">${s.pendingPayments}</div>
+        </a>
+        <a href="attendance.html?from=${today}&to=${today}" class="stat-card" style="display:block;text-decoration:none;color:inherit;">
+          <div class="label">Today's Attendance</div><div class="value">${s.todayAttendance}</div>
+        </a>
+      `;
+      } catch (err) {
+        el.innerHTML = `<div class="empty-state">Could not load stats: ${err.message}</div>`;
+      }
+    }
+    loadStats();
+  </script>
+</body>
+
+</html>

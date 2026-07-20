@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Enquiries - Yash Body Grow Admin</title>
+    <link rel="stylesheet" href="../../css/style.css" />
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="dashboard.html" class="logo">YASH<span> BODY GROW</span> <small
+                    style="font-size:12px;opacity:.6;">ADMIN</small></a>
+            <div class="nav-links">
+                <span id="admin-name" style="opacity:.8;font-size:14px;"></span>
+                <a href="#" id="logout-link" class="btn btn-outline btn-sm"
+                    style="color:#fff;border-color:#fff;">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dash-layout">
+        <aside class="sidebar">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="members.html">Members</a>
+            <a href="trainers.html">Trainers</a>
+            <a href="plans.html">Membership Plans</a>
+            <a href="attendance.html">Attendance</a>
+            <a href="payments.html">Payments</a>
+            <a href="workouts.html">Workout Plans</a>
+            <a href="diets.html">Diet Plans</a>
+            <a href="progress.html">Progress Tracking</a>
+            <a href="schedule.html">Trainer Schedules</a>
+            <a href="gallery.html">Gallery</a>
+            <a href="testimonials.html">Testimonials</a>
+            <a href="messages.html" class="active">Enquiries</a>
+            <a href="notifications.html">Notifications</a>
+            <a href="reports.html">Reports</a>
+            <a href="../settings.html">Change Password</a>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1>Contact Enquiries</h1>
+            </div>
+
+            <div class="toolbar">
+                <select id="filter-status" onchange="loadMessages()">
+                    <option value="">All Statuses</option>
+                    <option value="new">New</option>
+                    <option value="read">Read</option>
+                    <option value="resolved">Resolved</option>
+                </select>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Message</th>
+                            <th>Status</th>
+                            <th>Received</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="messages-tbody">
+                        <tr>
+                            <td colspan="7" class="empty-state">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script src="../../js/api.js"></script>
+    <script src="../../js/admin.js"></script>
+    <script>
+        requireAdmin();
+        document.getElementById('admin-name').textContent = Auth.getUser()?.name || '';
+        document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+        async function loadMessages() {
+            const tbody = document.getElementById('messages-tbody');
+            tbody.innerHTML = `<tr><td colspan="7" class="empty-state">Loading...</td></tr>`;
+            try {
+                const status = document.getElementById('filter-status').value;
+                const data = await api.get(`/contact${status ? '?status=' + status : ''}`);
+                const messages = data.messages || [];
+                if (!messages.length) {
+                    tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No enquiries yet.</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = messages.map(m => `
+        <tr>
+          <td>${m.name}</td>
+          <td>${m.email}</td>
+          <td>${m.phone || '-'}</td>
+          <td style="max-width:280px;">${m.message}</td>
+          <td><span class="badge badge-${m.status === 'new' ? 'pending' : 'active'}">${m.status}</span></td>
+          <td>${formatDate(m.createdAt)}</td>
+          <td class="actions">
+            ${m.status !== 'read' ? `<button class="btn btn-sm btn-outline" onclick="setStatus('${m._id}','read')">Mark Read</button>` : ''}
+            ${m.status !== 'resolved' ? `<button class="btn btn-sm btn-success" onclick="setStatus('${m._id}','resolved')">Resolve</button>` : ''}
+            <button class="btn btn-sm btn-danger" onclick="deleteMsg('${m._id}')">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="7" class="empty-state">Error: ${err.message}</td></tr>`;
+            }
+        }
+
+        async function setStatus(id, status) {
+            try {
+                await api.put(`/contact/${id}`, { status });
+                loadMessages();
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
+        async function deleteMsg(id) {
+            if (!confirm('Delete this message?')) return;
+            try {
+                await api.delete(`/contact/${id}`);
+                loadMessages();
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
+        loadMessages();
+    </script>
+</body>
+
+</html>

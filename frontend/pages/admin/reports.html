@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reports - Yash Body Grow Admin</title>
+    <link rel="stylesheet" href="../../css/style.css" />
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="dashboard.html" class="logo">YASH<span> BODY GROW</span> <small
+                    style="font-size:12px;opacity:.6;">ADMIN</small></a>
+            <div class="nav-links">
+                <span id="admin-name" style="opacity:.8;font-size:14px;"></span>
+                <a href="#" id="logout-link" class="btn btn-outline btn-sm"
+                    style="color:#fff;border-color:#fff;">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dash-layout">
+        <aside class="sidebar">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="members.html">Members</a>
+            <a href="trainers.html">Trainers</a>
+            <a href="plans.html">Membership Plans</a>
+            <a href="attendance.html">Attendance</a>
+            <a href="payments.html">Payments</a>
+            <a href="workouts.html">Workout Plans</a>
+            <a href="diets.html">Diet Plans</a>
+            <a href="progress.html">Progress Tracking</a>
+            <a href="schedule.html">Trainer Schedules</a>
+            <a href="gallery.html">Gallery</a>
+            <a href="testimonials.html">Testimonials</a>
+            <a href="messages.html">Enquiries</a>
+            <a href="notifications.html">Notifications</a>
+            <a href="reports.html" class="active">Reports</a>
+            <a href="../settings.html">Change Password</a>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1>Reports</h1>
+            </div>
+
+            <div class="card" style="margin-bottom:20px;">
+                <h3 style="margin-bottom:14px;">Revenue (Last 6 Months)</h3>
+                <div id="revenue-report">
+                    <div class="empty-state">Loading...</div>
+                </div>
+            </div>
+
+            <div class="grid grid-3" style="margin-bottom:20px;">
+                <div class="card">
+                    <h3 style="margin-bottom:14px;">Membership Report</h3>
+                    <div id="membership-report">
+                        <div class="empty-state">Loading...</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 style="margin-bottom:14px;">Payment Report</h3>
+                    <div id="payment-report">
+                        <div class="empty-state">Loading...</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 style="margin-bottom:14px;">Attendance (Last 30 Days)</h3>
+                    <div id="attendance-report">
+                        <div class="empty-state">Loading...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-bottom:14px;">Trainer Report — Members per Trainer</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Trainer</th>
+                                <th>Specialization</th>
+                                <th>Total Assigned</th>
+                                <th>Active</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trainer-report-tbody">
+                            <tr>
+                                <td colspan="4" class="empty-state">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../../js/api.js"></script>
+    <script src="../../js/admin.js"></script>
+    <script>
+        requireAdmin();
+        document.getElementById('admin-name').textContent = Auth.getUser()?.name || '';
+        document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+        async function loadRevenue() {
+            const el = document.getElementById('revenue-report');
+            try {
+                const data = await api.get('/reports/revenue?months=6');
+                if (!data.series.length) {
+                    el.innerHTML = `<div class="empty-state">No revenue recorded yet.</div>`;
+                    return;
+                }
+                const max = Math.max(...data.series.map(s => s.revenue), 1);
+                el.innerHTML = `
+        <div style="font-size:22px;font-weight:800;margin-bottom:14px;">${formatCurrency(data.totalRevenue)} <span style="font-size:13px;color:var(--gray);font-weight:400;">total (6 mo)</span></div>
+        <div style="display:flex;gap:10px;align-items:flex-end;height:120px;">
+          ${data.series.map(s => `
+            <div style="flex:1;text-align:center;">
+              <div style="background:var(--primary);border-radius:4px 4px 0 0;height:${Math.max(6, (s.revenue / max) * 100)}px;"></div>
+              <div style="font-size:11px;color:var(--gray);margin-top:6px;">${s.month}</div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+            } catch (err) {
+                el.innerHTML = `<div class="empty-state">Error: ${err.message}</div>`;
+            }
+        }
+
+        async function loadMembership() {
+            const el = document.getElementById('membership-report');
+            try {
+                const d = await api.get('/reports/membership');
+                el.innerHTML = `
+        <div style="font-size:14px;line-height:2;">
+          <div>Total Members: <strong>${d.total}</strong></div>
+          <div>Active: <strong style="color:#1e8449;">${d.active}</strong></div>
+          <div>Expired: <strong style="color:var(--danger);">${d.expired}</strong></div>
+          <div>No Plan: <strong>${d.none}</strong></div>
+        </div>
+        ${d.byPlan.length ? `<hr style="margin:12px 0;border:none;border-top:1px solid #eee;"/>` + d.byPlan.map(p => `<div style="font-size:13px;display:flex;justify-content:space-between;padding:3px 0;"><span>${p.plan}</span><strong>${p.count}</strong></div>`).join('') : ''}
+      `;
+            } catch (err) {
+                el.innerHTML = `<div class="empty-state">Error: ${err.message}</div>`;
+            }
+        }
+
+        async function loadPaymentReport() {
+            const el = document.getElementById('payment-report');
+            try {
+                const d = await api.get('/reports/payments');
+                el.innerHTML = `
+        <div style="font-size:14px;line-height:2;">
+          <div>Total Records: <strong>${d.totalRecords}</strong></div>
+          <div>Total Paid: <strong>${formatCurrency(d.totalPaidAmount)}</strong></div>
+        </div>
+        <hr style="margin:12px 0;border:none;border-top:1px solid #eee;"/>
+        ${d.byStatus.map(s => `<div style="font-size:13px;display:flex;justify-content:space-between;padding:3px 0;"><span style="text-transform:capitalize;">${s.status}</span><strong>${s.count}</strong></div>`).join('')}
+      `;
+            } catch (err) {
+                el.innerHTML = `<div class="empty-state">Error: ${err.message}</div>`;
+            }
+        }
+
+        async function loadAttendanceReport() {
+            const el = document.getElementById('attendance-report');
+            try {
+                const from = new Date();
+                from.setDate(from.getDate() - 30);
+                const d = await api.get(`/reports/attendance?from=${from.toISOString().substring(0, 10)}`);
+                el.innerHTML = `
+        <div style="font-size:14px;line-height:2;">
+          <div>Total Records: <strong>${d.totalRecords}</strong></div>
+          <div>Present: <strong style="color:#1e8449;">${d.totalPresent}</strong></div>
+          <div>Absent: <strong style="color:var(--danger);">${d.totalAbsent}</strong></div>
+        </div>
+      `;
+            } catch (err) {
+                el.innerHTML = `<div class="empty-state">Error: ${err.message}</div>`;
+            }
+        }
+
+        async function loadTrainerReport() {
+            const tbody = document.getElementById('trainer-report-tbody');
+            try {
+                const d = await api.get('/reports/trainers');
+                if (!d.trainers.length) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="empty-state">No trainers yet.</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = d.trainers.map(t => `
+        <tr>
+          <td>${t.name}</td>
+          <td>${t.specialization || '-'}</td>
+          <td>${t.totalAssignedMembers}</td>
+          <td>${t.activeAssignedMembers}</td>
+        </tr>
+      `).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="4" class="empty-state">Error: ${err.message}</td></tr>`;
+            }
+        }
+
+        loadRevenue();
+        loadMembership();
+        loadPaymentReport();
+        loadAttendanceReport();
+        loadTrainerReport();
+    </script>
+</body>
+
+</html>

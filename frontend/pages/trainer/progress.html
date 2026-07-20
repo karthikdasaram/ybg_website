@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Progress Tracking - Yash Body Grow Trainer</title>
+    <link rel="stylesheet" href="../../css/style.css" />
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="dashboard.html" class="logo">YASH<span> BODY GROW</span> <small
+                    style="font-size:12px;opacity:.6;">TRAINER</small></a>
+            <div class="nav-links">
+                <span id="trainer-name" style="opacity:.8;font-size:14px;"></span>
+                <a href="#" id="logout-link" class="btn btn-outline btn-sm"
+                    style="color:#fff;border-color:#fff;">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dash-layout">
+        <aside class="sidebar">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="members.html">My Members</a>
+            <a href="workouts.html">Workout Plans</a>
+            <a href="diets.html">Diet Plans</a>
+            <a href="progress.html" class="active">Progress Tracking</a>
+            <a href="schedule.html">My Schedule</a>
+            <a href="../settings.html">Change Password</a>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1>Progress Tracking</h1>
+            </div>
+
+            <div class="card" style="margin-bottom:24px;">
+                <h3 style="margin-bottom:14px;">Log New Entry</h3>
+                <div id="log-error" class="error-msg"></div>
+                <form id="log-form">
+                    <div class="form-group"><label>Member</label><select id="p-member" required
+                            onchange="loadHistory()"></select></div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Weight (kg)</label><input type="number" step="0.1"
+                                id="p-weight" /></div>
+                        <div class="form-group"><label>Height (cm)</label><input type="number" step="0.1"
+                                id="p-height" /></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Chest (cm)</label><input type="number" step="0.1" id="p-chest" />
+                        </div>
+                        <div class="form-group"><label>Waist (cm)</label><input type="number" step="0.1" id="p-waist" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Hips (cm)</label><input type="number" step="0.1" id="p-hips" />
+                        </div>
+                        <div class="form-group"><label>Arms (cm)</label><input type="number" step="0.1" id="p-arms" />
+                        </div>
+                    </div>
+                    <div class="form-group"><label>Notes</label><input type="text" id="p-notes" /></div>
+                    <button type="submit" class="btn btn-primary">Log Entry</button>
+                </form>
+            </div>
+
+            <h3 style="margin-bottom:14px;">History for Selected Member</h3>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Weight</th>
+                            <th>BMI</th>
+                            <th>Chest</th>
+                            <th>Waist</th>
+                            <th>Hips</th>
+                            <th>Arms</th>
+                            <th>Notes</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-tbody">
+                        <tr>
+                            <td colspan="9" class="empty-state">Select a member above.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script src="../../js/api.js"></script>
+    <script src="../../js/admin.js"></script>
+    <script>
+        requireTrainer();
+        document.getElementById('trainer-name').textContent = Auth.getUser()?.name || '';
+        document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+        async function loadMemberOptions() {
+            const data = await api.get('/trainers/me/members');
+            const opts = (data.members || []).map(m => `<option value="${m._id}">${m.user?.name || 'Unknown'}</option>`).join('');
+            document.getElementById('p-member').innerHTML = opts;
+            if (data.members && data.members.length) loadHistory();
+        }
+
+        document.getElementById('log-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errBox = document.getElementById('log-error');
+            hideMessage(errBox);
+            try {
+                await api.post('/progress', {
+                    memberId: document.getElementById('p-member').value,
+                    weightKg: Number(document.getElementById('p-weight').value) || undefined,
+                    heightCm: Number(document.getElementById('p-height').value) || undefined,
+                    chestCm: Number(document.getElementById('p-chest').value) || undefined,
+                    waistCm: Number(document.getElementById('p-waist').value) || undefined,
+                    hipsCm: Number(document.getElementById('p-hips').value) || undefined,
+                    armsCm: Number(document.getElementById('p-arms').value) || undefined,
+                    notes: document.getElementById('p-notes').value.trim()
+                });
+                ['p-weight', 'p-height', 'p-chest', 'p-waist', 'p-hips', 'p-arms', 'p-notes'].forEach(id => document.getElementById(id).value = '');
+                loadHistory();
+            } catch (err) {
+                showMessage(errBox, err.message);
+            }
+        });
+
+        async function loadHistory() {
+            const memberId = document.getElementById('p-member').value;
+            const tbody = document.getElementById('history-tbody');
+            if (!memberId) return;
+            tbody.innerHTML = `<tr><td colspan="9" class="empty-state">Loading...</td></tr>`;
+            try {
+                const data = await api.get(`/progress?memberId=${memberId}`);
+                const records = data.progress || [];
+                if (!records.length) {
+                    tbody.innerHTML = `<tr><td colspan="9" class="empty-state">No entries yet for this member.</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = records.slice().reverse().map(r => `
+        <tr>
+          <td>${formatDate(r.date)}</td>
+          <td>${r.weightKg ?? '-'}</td>
+          <td>${r.bmi ?? '-'}</td>
+          <td>${r.chestCm ?? '-'}</td>
+          <td>${r.waistCm ?? '-'}</td>
+          <td>${r.hipsCm ?? '-'}</td>
+          <td>${r.armsCm ?? '-'}</td>
+          <td>${r.notes || '-'}</td>
+          <td><button class="btn btn-sm btn-danger" onclick="deleteEntry('${r._id}')">Delete</button></td>
+        </tr>
+      `).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="9" class="empty-state">Error: ${err.message}</td></tr>`;
+            }
+        }
+
+        async function deleteEntry(id) {
+            if (!confirm('Delete this progress entry?')) return;
+            try {
+                await api.delete(`/progress/${id}`);
+                loadHistory();
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
+        loadMemberOptions();
+    </script>
+</body>
+
+</html>

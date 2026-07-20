@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Members - Yash Body Grow Trainer</title>
+    <link rel="stylesheet" href="../../css/style.css" />
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="dashboard.html" class="logo">YASH<span> BODY GROW</span> <small
+                    style="font-size:12px;opacity:.6;">TRAINER</small></a>
+            <div class="nav-links">
+                <span id="trainer-name" style="opacity:.8;font-size:14px;"></span>
+                <a href="#" id="logout-link" class="btn btn-outline btn-sm"
+                    style="color:#fff;border-color:#fff;">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dash-layout">
+        <aside class="sidebar">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="members.html" class="active">My Members</a>
+            <a href="workouts.html">Workout Plans</a>
+            <a href="diets.html">Diet Plans</a>
+            <a href="progress.html">Progress Tracking</a>
+            <a href="schedule.html">My Schedule</a>
+            <a href="../settings.html">Change Password</a>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1>My Members</h1>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Plan</th>
+                            <th>Status</th>
+                            <th>Expires</th>
+                        </tr>
+                    </thead>
+                    <tbody id="members-tbody">
+                        <tr>
+                            <td colspan="5" class="empty-state">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script src="../../js/api.js"></script>
+    <script src="../../js/admin.js"></script>
+    <script>
+        requireTrainer();
+        document.getElementById('trainer-name').textContent = Auth.getUser()?.name || '';
+        document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+        async function loadMembers() {
+            const tbody = document.getElementById('members-tbody');
+            try {
+                const data = await api.get('/trainers/me/members');
+                const members = data.members || [];
+                if (!members.length) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No members assigned to you yet.</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = members.map(m => `
+        <tr>
+          <td>${m.user?.name || '-'}</td>
+          <td>${m.user?.email || '-'}</td>
+          <td>${m.plan?.name || '-'}</td>
+          <td><span class="badge badge-${m.membershipStatus}">${m.membershipStatus}</span></td>
+          <td>${formatDate(m.membershipEnd)}</td>
+        </tr>
+      `).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="5" class="empty-state">Error: ${err.message}</td></tr>`;
+            }
+        }
+        loadMembers();
+    </script>
+</body>
+
+</html>

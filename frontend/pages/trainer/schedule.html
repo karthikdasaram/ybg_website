@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Schedule - Yash Body Grow Gym Trainer</title>
+    <link rel="stylesheet" href="../../css/style.css" />
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="dashboard.html" class="logo">YASH<span> BODY GROW</span> <small
+                    style="font-size:12px;opacity:.6;">TRAINER</small></a>
+            <div class="nav-links">
+                <span id="trainer-name" style="opacity:.8;font-size:14px;"></span>
+                <a href="#" id="logout-link" class="btn btn-outline btn-sm"
+                    style="color:#fff;border-color:#fff;">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dash-layout">
+        <aside class="sidebar">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="members.html">My Members</a>
+            <a href="workouts.html">Workout Plans</a>
+            <a href="diets.html">Diet Plans</a>
+            <a href="progress.html">Progress Tracking</a>
+            <a href="schedule.html" class="active">My Schedule</a>
+            <a href="../settings.html">Change Password</a>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1>My Schedule</h1>
+                <button class="btn btn-primary" onclick="openAddModal()">+ Add Session</button>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Day</th>
+                            <th>Time</th>
+                            <th>Title</th>
+                            <th>Member</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="schedule-tbody">
+                        <tr>
+                            <td colspan="5" class="empty-state">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <div class="modal-overlay" id="schedule-modal">
+        <div class="modal">
+            <span class="modal-close" onclick="closeModal('schedule-modal')">&times;</span>
+            <h3>Add Schedule Entry</h3>
+            <div id="schedule-error" class="error-msg"></div>
+            <form id="schedule-form">
+                <div class="form-group"><label>Title</label><input type="text" id="s-title"
+                        placeholder="e.g. Personal Training Session" required /></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Day</label>
+                        <select id="s-day" required>
+                            <option value="monday">Monday</option>
+                            <option value="tuesday">Tuesday</option>
+                            <option value="wednesday">Wednesday</option>
+                            <option value="thursday">Thursday</option>
+                            <option value="friday">Friday</option>
+                            <option value="saturday">Saturday</option>
+                            <option value="sunday">Sunday</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Member (optional)</label><select id="s-member">
+                            <option value="">None</option>
+                        </select></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Start Time</label><input type="time" id="s-start" required /></div>
+                    <div class="form-group"><label>End Time</label><input type="time" id="s-end" required /></div>
+                </div>
+                <div class="form-group"><label>Notes</label><input type="text" id="s-notes" /></div>
+                <button type="submit" class="btn btn-primary btn-block">Save</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="../../js/api.js"></script>
+    <script src="../../js/admin.js"></script>
+    <script>
+        requireTrainer();
+        document.getElementById('trainer-name').textContent = Auth.getUser()?.name || '';
+        document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+        async function loadMemberOptions() {
+            const data = await api.get('/trainers/me/members');
+            const opts = (data.members || []).map(m => `<option value="${m._id}">${m.user?.name || 'Unknown'}</option>`).join('');
+            document.getElementById('s-member').innerHTML = '<option value="">None</option>' + opts;
+        }
+
+        const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+        async function loadSchedule() {
+            const tbody = document.getElementById('schedule-tbody');
+            tbody.innerHTML = `<tr><td colspan="5" class="empty-state">Loading...</td></tr>`;
+            try {
+                const data = await api.get('/schedules');
+                const schedules = (data.schedules || []).slice().sort((a, b) => dayOrder.indexOf(a.dayOfWeek) - dayOrder.indexOf(b.dayOfWeek) || a.startTime.localeCompare(b.startTime));
+                if (!schedules.length) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No schedule entries yet.</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = schedules.map(s => `
+        <tr>
+          <td style="text-transform:capitalize;">${s.dayOfWeek}</td>
+          <td>${s.startTime} - ${s.endTime}</td>
+          <td>${s.title}</td>
+          <td>${s.member?.user?.name || '-'}</td>
+          <td class="actions"><button class="btn btn-sm btn-danger" onclick="deleteSchedule('${s._id}')">Delete</button></td>
+        </tr>
+      `).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="5" class="empty-state">Error: ${err.message}</td></tr>`;
+            }
+        }
+
+        function openAddModal() {
+            document.getElementById('schedule-form').reset();
+            hideMessage(document.getElementById('schedule-error'));
+            openModal('schedule-modal');
+        }
+
+        document.getElementById('schedule-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errBox = document.getElementById('schedule-error');
+            hideMessage(errBox);
+            try {
+                await api.post('/schedules', {
+                    title: document.getElementById('s-title').value.trim(),
+                    dayOfWeek: document.getElementById('s-day').value,
+                    memberId: document.getElementById('s-member').value || null,
+                    startTime: document.getElementById('s-start').value,
+                    endTime: document.getElementById('s-end').value,
+                    notes: document.getElementById('s-notes').value.trim()
+                });
+                closeModal('schedule-modal');
+                loadSchedule();
+            } catch (err) {
+                showMessage(errBox, err.message);
+            }
+        });
+
+        async function deleteSchedule(id) {
+            if (!confirm('Delete this schedule entry?')) return;
+            try {
+                await api.delete(`/schedules/${id}`);
+                loadSchedule();
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
+        loadMemberOptions();
+        loadSchedule();
+    </script>
+</body>
+
+</html>

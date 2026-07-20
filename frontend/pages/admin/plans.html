@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Membership Plans - Yash Body Grow Admin</title>
+  <link rel="stylesheet" href="../../css/style.css" />
+</head>
+
+<body>
+
+  <nav class="navbar">
+    <div class="container">
+      <a href="dashboard.html" class="logo">YASH<span> BODY GROW</span> <small
+          style="font-size:12px;opacity:.6;">ADMIN</small></a>
+      <div class="nav-links">
+        <span id="admin-name" style="opacity:.8;font-size:14px;"></span>
+        <a href="#" id="logout-link" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff;">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="dash-layout">
+    <aside class="sidebar">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="members.html">Members</a>
+      <a href="trainers.html">Trainers</a>
+      <a href="plans.html" class="active">Membership Plans</a>
+      <a href="attendance.html">Attendance</a>
+      <a href="payments.html">Payments</a>
+      <a href="workouts.html">Workout Plans</a>
+      <a href="diets.html">Diet Plans</a>
+      <a href="progress.html">Progress Tracking</a>
+      <a href="schedule.html">Trainer Schedules</a>
+      <a href="gallery.html">Gallery</a>
+      <a href="testimonials.html">Testimonials</a>
+      <a href="messages.html">Enquiries</a>
+      <a href="notifications.html">Notifications</a>
+      <a href="reports.html">Reports</a>
+      <a href="../settings.html">Change Password</a>
+    </aside>
+
+    <main class="main-content">
+      <div class="page-header">
+        <h1>Membership Plans</h1>
+        <button class="btn btn-primary" onclick="openAddModal()">+ Add Plan</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Duration</th>
+              <th>Price</th>
+              <th>Benefits</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="plans-tbody">
+            <tr>
+              <td colspan="6" class="empty-state">Loading plans...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-overlay" id="plan-modal">
+    <div class="modal">
+      <span class="modal-close" onclick="closeModal('plan-modal')">&times;</span>
+      <h3 id="plan-modal-title">Add Plan</h3>
+      <div id="plan-error" class="error-msg"></div>
+      <form id="plan-form">
+        <input type="hidden" id="p-id" />
+        <div class="form-group"><label>Plan Name</label><input type="text" id="p-name" required /></div>
+        <div class="form-row">
+          <div class="form-group"><label>Duration (months)</label><input type="number" id="p-duration" min="1"
+              required /></div>
+          <div class="form-group"><label>Price ($)</label><input type="number" id="p-price" min="0" step="0.01"
+              required /></div>
+        </div>
+        <div class="form-group"><label>Benefits (one per line)</label><textarea id="p-benefits" rows="4"
+            placeholder="Access to all equipment&#10;1 free trainer session&#10;Locker access"></textarea></div>
+        <div class="form-group"><label>Description</label><textarea id="p-desc" rows="2"></textarea></div>
+        <button type="submit" class="btn btn-primary btn-block">Save Plan</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="../../js/api.js"></script>
+  <script src="../../js/admin.js"></script>
+  <script>
+    requireAdmin();
+    document.getElementById('admin-name').textContent = Auth.getUser()?.name || '';
+    document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+    async function loadPlans() {
+      const tbody = document.getElementById('plans-tbody');
+      tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Loading...</td></tr>`;
+      try {
+        const data = await api.get('/plans');
+        const plans = data.plans || [];
+        if (!plans.length) {
+          tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No plans yet.</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = plans.map(p => `
+        <tr>
+          <td>${p.name}</td>
+          <td>${p.durationMonths} mo</td>
+          <td>${formatCurrency(p.price)}</td>
+          <td>${(p.benefits || []).slice(0, 2).join(', ')}${(p.benefits || []).length > 2 ? '...' : ''}</td>
+          <td><span class="badge badge-${p.isActive ? 'active' : 'expired'}">${p.isActive ? 'active' : 'inactive'}</span></td>
+          <td class="actions">
+            <button class="btn btn-sm btn-dark" onclick='editPlan(${JSON.stringify(p).replace(/'/g, "&apos;")})'>Edit</button>
+            <button class="btn btn-sm btn-outline" onclick="toggleActive('${p._id}')">${p.isActive ? 'Deactivate' : 'Activate'}</button>
+            <button class="btn btn-sm btn-danger" onclick="deletePlan('${p._id}', '${p.name.replace(/'/g, "")}')">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Error: ${err.message}</td></tr>`;
+      }
+    }
+
+    function openAddModal() {
+      document.getElementById('plan-modal-title').textContent = 'Add Plan';
+      document.getElementById('plan-form').reset();
+      document.getElementById('p-id').value = '';
+      hideMessage(document.getElementById('plan-error'));
+      openModal('plan-modal');
+    }
+
+    function editPlan(p) {
+      document.getElementById('plan-modal-title').textContent = 'Edit Plan';
+      document.getElementById('p-id').value = p._id;
+      document.getElementById('p-name').value = p.name;
+      document.getElementById('p-duration').value = p.durationMonths;
+      document.getElementById('p-price').value = p.price;
+      document.getElementById('p-benefits').value = (p.benefits || []).join('\n');
+      document.getElementById('p-desc').value = p.description || '';
+      hideMessage(document.getElementById('plan-error'));
+      openModal('plan-modal');
+    }
+
+    document.getElementById('plan-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errBox = document.getElementById('plan-error');
+      hideMessage(errBox);
+      const id = document.getElementById('p-id').value;
+      const payload = {
+        name: document.getElementById('p-name').value.trim(),
+        durationMonths: Number(document.getElementById('p-duration').value),
+        price: Number(document.getElementById('p-price').value),
+        benefits: document.getElementById('p-benefits').value.split('\n').map(b => b.trim()).filter(Boolean),
+        description: document.getElementById('p-desc').value.trim()
+      };
+      try {
+        if (id) await api.put(`/plans/${id}`, payload);
+        else await api.post('/plans', payload);
+        closeModal('plan-modal');
+        loadPlans();
+      } catch (err) {
+        showMessage(errBox, err.message);
+      }
+    });
+
+    async function toggleActive(id) {
+      try {
+        await api.patch(`/plans/${id}/toggle`);
+        loadPlans();
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    async function deletePlan(id, name) {
+      if (!confirm(`Delete plan "${name}"?`)) return;
+      try {
+        await api.delete(`/plans/${id}`);
+        loadPlans();
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    loadPlans();
+  </script>
+</body>
+
+</html>

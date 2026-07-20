@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Diet Plans - Yash Body Grow Trainer</title>
+    <link rel="stylesheet" href="../../css/style.css" />
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="dashboard.html" class="logo">YASH<span> BODY GROW</span> <small
+                    style="font-size:12px;opacity:.6;">TRAINER</small></a>
+            <div class="nav-links">
+                <span id="trainer-name" style="opacity:.8;font-size:14px;"></span>
+                <a href="#" id="logout-link" class="btn btn-outline btn-sm"
+                    style="color:#fff;border-color:#fff;">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dash-layout">
+        <aside class="sidebar">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="members.html">My Members</a>
+            <a href="workouts.html">Workout Plans</a>
+            <a href="diets.html" class="active">Diet Plans</a>
+            <a href="progress.html">Progress Tracking</a>
+            <a href="schedule.html">My Schedule</a>
+            <a href="../settings.html">Change Password</a>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1>Diet Plans</h1>
+                <button class="btn btn-primary" onclick="openAddModal()">+ New Plan</button>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Member</th>
+                            <th>Goal</th>
+                            <th>Calorie Target</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="diets-tbody">
+                        <tr>
+                            <td colspan="6" class="empty-state">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <div class="modal-overlay" id="diet-modal">
+        <div class="modal" style="max-width:560px;">
+            <span class="modal-close" onclick="closeModal('diet-modal')">&times;</span>
+            <h3 id="diet-modal-title">New Diet Plan</h3>
+            <div id="diet-error" class="error-msg"></div>
+            <form id="diet-form">
+                <input type="hidden" id="d-id" />
+                <div class="form-group"><label>Member</label><select id="d-member" required></select></div>
+                <div class="form-group"><label>Title</label><input type="text" id="d-title"
+                        placeholder="e.g. Lean Bulk Meal Plan" required /></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Goal</label><input type="text" id="d-goal"
+                            placeholder="e.g. Muscle gain" /></div>
+                    <div class="form-group"><label>Daily Calorie Target</label><input type="number" id="d-calories"
+                            min="0" /></div>
+                </div>
+                <div class="form-group">
+                    <label>Meals (one per line: Meal Name | Items | Calories)</label>
+                    <textarea id="d-meals" rows="5"
+                        placeholder="Breakfast | Oats, eggs, banana | 450&#10;Lunch | Chicken, rice, salad | 650"></textarea>
+                </div>
+                <div class="form-group"><label>Notes</label><textarea id="d-notes" rows="2"></textarea></div>
+                <button type="submit" class="btn btn-primary btn-block">Save Plan</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="../../js/api.js"></script>
+    <script src="../../js/admin.js"></script>
+    <script>
+        requireTrainer();
+        document.getElementById('trainer-name').textContent = Auth.getUser()?.name || '';
+        document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+        async function loadMemberOptions() {
+            const data = await api.get('/trainers/me/members');
+            const opts = (data.members || []).map(m => `<option value="${m._id}">${m.user?.name || 'Unknown'}</option>`).join('');
+            document.getElementById('d-member').innerHTML = opts;
+        }
+
+        function parseMeals(text) {
+            return text.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
+                const [name, items, calories] = line.split('|').map(p => (p || '').trim());
+                return { name: name || 'Meal', items: items || '', calories: Number(calories) || 0 };
+            });
+        }
+
+        function mealsToText(meals) {
+            return (meals || []).map(m => `${m.name} | ${m.items} | ${m.calories}`).join('\n');
+        }
+
+        async function loadDiets() {
+            const tbody = document.getElementById('diets-tbody');
+            tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Loading...</td></tr>`;
+            try {
+                const data = await api.get('/diets');
+                const plans = data.dietPlans || [];
+                if (!plans.length) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No diet plans yet.</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = plans.map(p => `
+        <tr>
+          <td>${p.title}</td>
+          <td>${p.member?.user?.name || '-'}</td>
+          <td>${p.goal || '-'}</td>
+          <td>${p.dailyCalorieTarget || '-'}</td>
+          <td><span class="badge badge-${p.isActive ? 'active' : 'expired'}">${p.isActive ? 'active' : 'inactive'}</span></td>
+          <td class="actions">
+            <button class="btn btn-sm btn-dark" onclick='editDiet(${JSON.stringify(p).replace(/'/g, "&apos;")})'>Edit</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteDiet('${p._id}')">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Error: ${err.message}</td></tr>`;
+            }
+        }
+
+        function openAddModal() {
+            document.getElementById('diet-modal-title').textContent = 'New Diet Plan';
+            document.getElementById('diet-form').reset();
+            document.getElementById('d-id').value = '';
+            hideMessage(document.getElementById('diet-error'));
+            openModal('diet-modal');
+        }
+
+        function editDiet(p) {
+            document.getElementById('diet-modal-title').textContent = 'Edit Diet Plan';
+            document.getElementById('d-id').value = p._id;
+            document.getElementById('d-member').value = p.member?._id || p.member;
+            document.getElementById('d-title').value = p.title;
+            document.getElementById('d-goal').value = p.goal || '';
+            document.getElementById('d-calories').value = p.dailyCalorieTarget || '';
+            document.getElementById('d-meals').value = mealsToText(p.meals);
+            document.getElementById('d-notes').value = p.notes || '';
+            hideMessage(document.getElementById('diet-error'));
+            openModal('diet-modal');
+        }
+
+        document.getElementById('diet-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errBox = document.getElementById('diet-error');
+            hideMessage(errBox);
+            const id = document.getElementById('d-id').value;
+            const payload = {
+                memberId: document.getElementById('d-member').value,
+                title: document.getElementById('d-title').value.trim(),
+                goal: document.getElementById('d-goal').value.trim(),
+                dailyCalorieTarget: Number(document.getElementById('d-calories').value) || 0,
+                meals: parseMeals(document.getElementById('d-meals').value),
+                notes: document.getElementById('d-notes').value.trim()
+            };
+            try {
+                if (id) await api.put(`/diets/${id}`, payload);
+                else await api.post('/diets', payload);
+                closeModal('diet-modal');
+                loadDiets();
+            } catch (err) {
+                showMessage(errBox, err.message);
+            }
+        });
+
+        async function deleteDiet(id) {
+            if (!confirm('Delete this diet plan?')) return;
+            try {
+                await api.delete(`/diets/${id}`);
+                loadDiets();
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
+        loadMemberOptions();
+        loadDiets();
+    </script>
+</body>
+
+</html>

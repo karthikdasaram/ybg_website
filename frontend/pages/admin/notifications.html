@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Notifications - Yash Body Grow Admin</title>
+    <link rel="stylesheet" href="../../css/style.css" />
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="dashboard.html" class="logo">YASH<span> BODY GROW</span> <small
+                    style="font-size:12px;opacity:.6;">ADMIN</small></a>
+            <div class="nav-links">
+                <span id="admin-name" style="opacity:.8;font-size:14px;"></span>
+                <a href="#" id="logout-link" class="btn btn-outline btn-sm"
+                    style="color:#fff;border-color:#fff;">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dash-layout">
+        <aside class="sidebar">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="members.html">Members</a>
+            <a href="trainers.html">Trainers</a>
+            <a href="plans.html">Membership Plans</a>
+            <a href="attendance.html">Attendance</a>
+            <a href="payments.html">Payments</a>
+            <a href="workouts.html">Workout Plans</a>
+            <a href="diets.html">Diet Plans</a>
+            <a href="progress.html">Progress Tracking</a>
+            <a href="schedule.html">Trainer Schedules</a>
+            <a href="gallery.html">Gallery</a>
+            <a href="testimonials.html">Testimonials</a>
+            <a href="messages.html">Enquiries</a>
+            <a href="notifications.html" class="active">Notifications</a>
+            <a href="reports.html">Reports</a>
+            <a href="../settings.html">Change Password</a>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1>Notifications</h1>
+                <button class="btn btn-primary" onclick="openModal('notify-modal')">+ New Announcement</button>
+            </div>
+
+            <div class="card" style="margin-bottom:24px;">
+                <h3 style="margin-bottom:14px;">Reminders Due</h3>
+                <p style="color:var(--gray);font-size:13px;margin-bottom:14px;">Members whose membership expires within
+                    7 days, and payments still marked pending. (No auto email/SMS is sent yet — this is a live list for
+                    the admin to act on manually or via the "New Announcement" button.)</p>
+                <div id="reminders-box">
+                    <div class="empty-state">Loading...</div>
+                </div>
+            </div>
+
+            <h3 style="margin-bottom:14px;">Sent Notifications</h3>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Message</th>
+                            <th>Type</th>
+                            <th>Audience</th>
+                            <th>Sent</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="notif-tbody">
+                        <tr>
+                            <td colspan="6" class="empty-state">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <div class="modal-overlay" id="notify-modal">
+        <div class="modal">
+            <span class="modal-close" onclick="closeModal('notify-modal')">&times;</span>
+            <h3>New Announcement</h3>
+            <div id="notify-error" class="error-msg"></div>
+            <form id="notify-form">
+                <div class="form-group"><label>Title</label><input type="text" id="n-title" required /></div>
+                <div class="form-group"><label>Message</label><textarea id="n-message" rows="3" required></textarea>
+                </div>
+                <div class="form-group"><label>Type</label>
+                    <select id="n-type">
+                        <option value="announcement">Announcement</option>
+                        <option value="membership_reminder">Membership Reminder</option>
+                        <option value="payment_reminder">Payment Reminder</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Audience</label>
+                    <select id="n-audience"
+                        onchange="document.getElementById('n-member-group').style.display = this.value === 'member' ? 'block' : 'none'">
+                        <option value="all">All Members</option>
+                        <option value="member">Specific Member</option>
+                    </select>
+                </div>
+                <div class="form-group" id="n-member-group" style="display:none;">
+                    <label>Member</label>
+                    <select id="n-member"></select>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Send</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="../../js/api.js"></script>
+    <script src="../../js/admin.js"></script>
+    <script>
+        requireAdmin();
+        document.getElementById('admin-name').textContent = Auth.getUser()?.name || '';
+        document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+        async function loadMemberOptions() {
+            const data = await api.get('/members');
+            document.getElementById('n-member').innerHTML = (data.members || [])
+                .map(m => `<option value="${m._id}">${m.user?.name || 'Unknown'}</option>`).join('');
+        }
+
+        async function loadReminders() {
+            const box = document.getElementById('reminders-box');
+            try {
+                const data = await api.get('/notifications/reminders');
+                const expiring = data.expiringSoon || [];
+                const pending = data.pendingPayments || [];
+
+                if (!expiring.length && !pending.length) {
+                    box.innerHTML = '<div class="empty-state">Nothing due right now.</div>';
+                    return;
+                }
+
+                let html = '';
+                if (expiring.length) {
+                    html += `<p style="font-weight:600;margin-bottom:6px;">Expiring within 7 days (${expiring.length})</p>`;
+                    html += '<ul style="margin-bottom:16px;">' + expiring.map(m => `<li style="padding:4px 0;font-size:14px;">${m.name} (${m.email}) — expires ${formatDate(m.membershipEnd)}</li>`).join('') + '</ul>';
+                }
+                if (pending.length) {
+                    html += `<p style="font-weight:600;margin-bottom:6px;">Pending Payments (${pending.length})</p>`;
+                    html += '<ul>' + pending.map(p => `<li style="padding:4px 0;font-size:14px;">${p.name} (${p.email}) — ${formatCurrency(p.amount)} — ${p.receiptNo}</li>`).join('') + '</ul>';
+                }
+                box.innerHTML = html;
+            } catch (err) {
+                box.innerHTML = `<div class="empty-state">Error: ${err.message}</div>`;
+            }
+        }
+
+        async function loadNotifications() {
+            const tbody = document.getElementById('notif-tbody');
+            tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Loading...</td></tr>`;
+            try {
+                const data = await api.get('/notifications');
+                const items = data.notifications || [];
+                if (!items.length) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No notifications sent yet.</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = items.map(n => `
+        <tr>
+          <td>${n.title}</td>
+          <td style="max-width:280px;">${n.message}</td>
+          <td>${n.type.replace('_', ' ')}</td>
+          <td>${n.audience === 'all' ? 'All' : (n.member?.user?.name || 'Member')}</td>
+          <td>${formatDate(n.createdAt)}</td>
+          <td><button class="btn btn-sm btn-danger" onclick="deleteNotif('${n._id}')">Delete</button></td>
+        </tr>
+      `).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Error: ${err.message}</td></tr>`;
+            }
+        }
+
+        document.getElementById('notify-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errBox = document.getElementById('notify-error');
+            hideMessage(errBox);
+            try {
+                await api.post('/notifications', {
+                    title: document.getElementById('n-title').value.trim(),
+                    message: document.getElementById('n-message').value.trim(),
+                    type: document.getElementById('n-type').value,
+                    audience: document.getElementById('n-audience').value,
+                    memberId: document.getElementById('n-member').value
+                });
+                closeModal('notify-modal');
+                document.getElementById('notify-form').reset();
+                loadNotifications();
+            } catch (err) {
+                showMessage(errBox, err.message);
+            }
+        });
+
+        async function deleteNotif(id) {
+            if (!confirm('Delete this notification?')) return;
+            try {
+                await api.delete(`/notifications/${id}`);
+                loadNotifications();
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
+        loadMemberOptions();
+        loadReminders();
+        loadNotifications();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Membership Plans - Yash Body Grow Gym</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+
+  <nav class="navbar">
+    <div class="container">
+      <a href="index.html" class="logo">YASH<span> BODY GROW</span></a>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="plans.html">Plans</a>
+        <a href="trainers.html">Trainers</a>
+        <a href="contact.html">Contact</a>
+        <a href="pages/login.html">Login</a>
+        <a href="pages/register.html" class="btn btn-primary btn-sm">Join Now</a>
+      </div>
+    </div>
+  </nav>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-title">
+        <h2>Membership Plans</h2>
+        <p>Choose the plan that fits your goals</p>
+      </div>
+      <div id="plans-list" class="grid grid-3">
+        <div class="empty-state">Loading plans...</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <p>&copy; 2026 Yash Body Grow Gym. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="js/api.js"></script>
+  <script>
+    async function loadPlans() {
+      const el = document.getElementById('plans-list');
+      try {
+        const data = await api.get('/plans');
+        const plans = (data.plans || []).filter(p => p.isActive);
+        if (!plans.length) {
+          el.innerHTML = '<div class="empty-state">No plans available yet. Check back soon.</div>';
+          return;
+        }
+        el.innerHTML = plans.map(p => `
+        <div class="card plan-card">
+          <h3>${p.name}</h3>
+          <div class="price">₹${p.price}<span>/${p.durationMonths} mo</span></div>
+          ${p.description ? `<p style="color:#666;font-size:14px;">${p.description}</p>` : ''}
+          <ul>${(p.benefits || []).map(b => `<li>${b}</li>`).join('')}</ul>
+          <a href="pages/register.html" class="btn btn-primary btn-block">Get Started</a>
+        </div>
+      `).join('');
+      } catch (err) {
+        el.innerHTML = '<div class="empty-state">Could not load plans right now.</div>';
+      }
+    }
+    loadPlans();
+  </script>
+</body>
+
+</html>

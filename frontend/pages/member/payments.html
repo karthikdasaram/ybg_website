@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Payments - Yash Body Grow Gym</title>
+  <link rel="stylesheet" href="../../css/style.css" />
+</head>
+
+<body>
+
+  <nav class="navbar">
+    <div class="container">
+      <a href="dashboard.html" class="logo">YASH<span> BODY GROW</span></a>
+      <div class="nav-links">
+        <span id="member-name" style="opacity:.8;font-size:14px;"></span>
+        <a href="#" id="logout-link" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff;">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="dash-layout">
+    <aside class="sidebar">
+      <a href="dashboard.html">My Dashboard</a>
+      <a href="attendance.html">My Attendance</a>
+      <a href="payments.html" class="active">My Payments</a>
+      <a href="../settings.html">Change Password</a>
+    </aside>
+
+    <main class="main-content">
+      <div class="page-header">
+        <h1>My Payments</h1>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Receipt #</th>
+              <th>Plan</th>
+              <th>Amount</th>
+              <th>Method</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="payments-tbody">
+            <tr>
+              <td colspan="6" class="empty-state">Loading...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script src="../../js/api.js"></script>
+  <script src="../../js/admin.js"></script>
+  <script>
+    requireMember();
+    document.getElementById('member-name').textContent = Auth.getUser()?.name || '';
+    document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+    async function loadPayments() {
+      const tbody = document.getElementById('payments-tbody');
+      try {
+        const data = await api.get('/payments/me');
+        const payments = data.payments || [];
+        if (!payments.length) {
+          tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No payments recorded yet.</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = payments.map(p => `
+        <tr>
+          <td>${p.receiptNo}</td>
+          <td>${p.plan?.name || '-'}</td>
+          <td>${formatCurrency(p.amount)}</td>
+          <td>${p.method}</td>
+          <td><span class="badge badge-${p.status}">${p.status}</span></td>
+          <td>${formatDate(p.paymentDate)}</td>
+        </tr>
+      `).join('');
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Error: ${err.message}</td></tr>`;
+      }
+    }
+    loadPayments();
+  </script>
+</body>
+
+</html>

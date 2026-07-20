@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Testimonials - Yash Body Grow Admin</title>
+    <link rel="stylesheet" href="../../css/style.css" />
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="dashboard.html" class="logo">YASH<span> BODY GROW</span> <small
+                    style="font-size:12px;opacity:.6;">ADMIN</small></a>
+            <div class="nav-links">
+                <span id="admin-name" style="opacity:.8;font-size:14px;"></span>
+                <a href="#" id="logout-link" class="btn btn-outline btn-sm"
+                    style="color:#fff;border-color:#fff;">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dash-layout">
+        <aside class="sidebar">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="members.html">Members</a>
+            <a href="trainers.html">Trainers</a>
+            <a href="plans.html">Membership Plans</a>
+            <a href="attendance.html">Attendance</a>
+            <a href="payments.html">Payments</a>
+            <a href="workouts.html">Workout Plans</a>
+            <a href="diets.html">Diet Plans</a>
+            <a href="progress.html">Progress Tracking</a>
+            <a href="schedule.html">Trainer Schedules</a>
+            <a href="gallery.html">Gallery</a>
+            <a href="testimonials.html" class="active">Testimonials</a>
+            <a href="messages.html">Enquiries</a>
+            <a href="notifications.html">Notifications</a>
+            <a href="reports.html">Reports</a>
+            <a href="../settings.html">Change Password</a>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1>Testimonials</h1>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Message</th>
+                            <th>Rating</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="testimonials-tbody">
+                        <tr>
+                            <td colspan="5" class="empty-state">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script src="../../js/api.js"></script>
+    <script src="../../js/admin.js"></script>
+    <script>
+        requireAdmin();
+        document.getElementById('admin-name').textContent = Auth.getUser()?.name || '';
+        document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+        async function loadTestimonials() {
+            const tbody = document.getElementById('testimonials-tbody');
+            tbody.innerHTML = `<tr><td colspan="5" class="empty-state">Loading...</td></tr>`;
+            try {
+                const data = await api.get('/testimonials/all');
+                const items = data.testimonials || [];
+                if (!items.length) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No testimonials submitted yet.</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = items.map(t => `
+        <tr>
+          <td>${t.name}</td>
+          <td style="max-width:320px;">${t.message}</td>
+          <td>${'★'.repeat(t.rating)}${'☆'.repeat(5 - t.rating)}</td>
+          <td><span class="badge badge-${t.isApproved ? 'active' : 'pending'}">${t.isApproved ? 'approved' : 'pending'}</span></td>
+          <td class="actions">
+            <button class="btn btn-sm btn-outline" onclick="toggleApprove('${t._id}')">${t.isApproved ? 'Unapprove' : 'Approve'}</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteTestimonial('${t._id}')">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="5" class="empty-state">Error: ${err.message}</td></tr>`;
+            }
+        }
+
+        async function toggleApprove(id) {
+            try {
+                await api.patch(`/testimonials/${id}/approve`);
+                loadTestimonials();
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
+        async function deleteTestimonial(id) {
+            if (!confirm('Delete this testimonial?')) return;
+            try {
+                await api.delete(`/testimonials/${id}`);
+                loadTestimonials();
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
+        loadTestimonials();
+    </script>
+</body>
+
+</html>

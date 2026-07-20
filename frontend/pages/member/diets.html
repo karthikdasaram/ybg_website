@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Diet Plans - Yash Body Grow Gym</title>
+    <link rel="stylesheet" href="../../css/style.css" />
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="dashboard.html" class="logo">YASH<span> BODY GROW</span></a>
+            <div class="nav-links">
+                <span id="member-name" style="opacity:.8;font-size:14px;"></span>
+                <a href="#" id="logout-link" class="btn btn-outline btn-sm"
+                    style="color:#fff;border-color:#fff;">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dash-layout">
+        <aside class="sidebar">
+            <a href="dashboard.html">My Dashboard</a>
+            <a href="attendance.html">My Attendance</a>
+            <a href="payments.html">My Payments</a>
+            <a href="workouts.html">Workout Plans</a>
+            <a href="diets.html" class="active">Diet Plans</a>
+            <a href="progress.html">My Progress</a>
+            <a href="notifications.html">Notifications</a>
+            <a href="feedback.html">Leave Feedback</a>
+            <a href="../settings.html">Change Password</a>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1>My Diet Plans</h1>
+            </div>
+            <div id="plans-list">
+                <div class="empty-state">Loading...</div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../../js/api.js"></script>
+    <script src="../../js/admin.js"></script>
+    <script>
+        requireMember();
+        document.getElementById('member-name').textContent = Auth.getUser()?.name || '';
+        document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+        async function loadPlans() {
+            const el = document.getElementById('plans-list');
+            try {
+                const data = await api.get('/diets/me');
+                const plans = data.dietPlans || [];
+                if (!plans.length) {
+                    el.innerHTML = '<div class="card"><div class="empty-state">No diet plans assigned yet. Check back after your trainer sets one up.</div></div>';
+                    return;
+                }
+                el.innerHTML = plans.map(p => `
+        <div class="card" style="margin-bottom:16px;">
+          <h3>${p.title}</h3>
+          <p style="color:var(--gray);font-size:14px;margin:6px 0;">${p.goal ? 'Goal: ' + p.goal + ' • ' : ''}${p.dailyCalorieTarget ? p.dailyCalorieTarget + ' kcal/day target' : ''}</p>
+          <div class="table-wrap" style="margin-top:14px;">
+            <table>
+              <thead><tr><th>Meal</th><th>Items</th><th>Calories</th></tr></thead>
+              <tbody>
+                ${(p.meals || []).map(m => `<tr><td>${m.name}</td><td>${m.items || '-'}</td><td>${m.calories || '-'}</td></tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+          ${p.notes ? `<p style="margin-top:12px;font-size:14px;color:#555;">${p.notes}</p>` : ''}
+        </div>
+      `).join('');
+            } catch (err) {
+                el.innerHTML = `<div class="empty-state">Error: ${err.message}</div>`;
+            }
+        }
+        loadPlans();
+    </script>
+</body>
+
+</html>

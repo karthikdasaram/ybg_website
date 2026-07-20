@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Progress - Yash Body Grow Gym</title>
+    <link rel="stylesheet" href="../../css/style.css" />
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="dashboard.html" class="logo">YASH<span> BODY GROW</span></a>
+            <div class="nav-links">
+                <span id="member-name" style="opacity:.8;font-size:14px;"></span>
+                <a href="#" id="logout-link" class="btn btn-outline btn-sm"
+                    style="color:#fff;border-color:#fff;">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dash-layout">
+        <aside class="sidebar">
+            <a href="dashboard.html">My Dashboard</a>
+            <a href="attendance.html">My Attendance</a>
+            <a href="payments.html">My Payments</a>
+            <a href="workouts.html">Workout Plans</a>
+            <a href="diets.html">Diet Plans</a>
+            <a href="progress.html" class="active">My Progress</a>
+            <a href="notifications.html">Notifications</a>
+            <a href="feedback.html">Leave Feedback</a>
+            <a href="../settings.html">Change Password</a>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1>My Progress</h1>
+            </div>
+
+            <div class="card" style="margin-bottom:20px;">
+                <h3 style="margin-bottom:14px;">Weight Trend</h3>
+                <div id="weight-chart">
+                    <div class="empty-state">Loading...</div>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Weight (kg)</th>
+                            <th>BMI</th>
+                            <th>Chest</th>
+                            <th>Waist</th>
+                            <th>Hips</th>
+                            <th>Arms</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-tbody">
+                        <tr>
+                            <td colspan="8" class="empty-state">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script src="../../js/api.js"></script>
+    <script src="../../js/admin.js"></script>
+    <script>
+        requireMember();
+        document.getElementById('member-name').textContent = Auth.getUser()?.name || '';
+        document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+        async function loadProgress() {
+            const chart = document.getElementById('weight-chart');
+            const tbody = document.getElementById('history-tbody');
+            try {
+                const data = await api.get('/progress/me');
+                const records = data.progress || [];
+
+                if (!records.length) {
+                    chart.innerHTML = '<div class="empty-state">No progress entries logged yet. Ask your trainer to record your first check-in.</div>';
+                    tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No entries yet.</td></tr>`;
+                    return;
+                }
+
+                const weights = records.filter(r => r.weightKg).map(r => r.weightKg);
+                if (weights.length) {
+                    const max = Math.max(...weights);
+                    const min = Math.min(...weights);
+                    const range = max - min || 1;
+                    chart.innerHTML = `
+          <div style="display:flex;gap:8px;align-items:flex-end;height:120px;">
+            ${records.filter(r => r.weightKg).map(r => `
+              <div style="flex:1;text-align:center;">
+                <div style="background:var(--primary);border-radius:4px 4px 0 0;height:${10 + ((r.weightKg - min) / range) * 90}px;" title="${r.weightKg} kg"></div>
+                <div style="font-size:10px;color:var(--gray);margin-top:6px;">${formatDate(r.date).replace(/, \d{4}/, '')}</div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+                } else {
+                    chart.innerHTML = '<div class="empty-state">No weight entries logged yet.</div>';
+                }
+
+                tbody.innerHTML = records.slice().reverse().map(r => `
+        <tr>
+          <td>${formatDate(r.date)}</td>
+          <td>${r.weightKg ?? '-'}</td>
+          <td>${r.bmi ?? '-'}</td>
+          <td>${r.chestCm ?? '-'}</td>
+          <td>${r.waistCm ?? '-'}</td>
+          <td>${r.hipsCm ?? '-'}</td>
+          <td>${r.armsCm ?? '-'}</td>
+          <td>${r.notes || '-'}</td>
+        </tr>
+      `).join('');
+            } catch (err) {
+                chart.innerHTML = `<div class="empty-state">Error: ${err.message}</div>`;
+                tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Error loading data.</td></tr>`;
+            }
+        }
+        loadProgress();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yash Body Grow Gym - Home</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+
+  <nav class="navbar">
+    <div class="container">
+      <a href="index.html" class="logo">YASH<span> BODY GROW</span></a>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="plans.html">Plans</a>
+        <a href="trainers.html">Trainers</a>
+        <a href="gallery.html">Gallery</a>
+        <a href="contact.html">Contact</a>
+        <a href="pages/login.html">Login</a>
+        <a href="pages/register.html" class="btn btn-primary btn-sm">Join Now</a>
+      </div>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="container">
+      <h1>Transform Your Body,<br />Transform Your Life</h1>
+      <p>State-of-the-art equipment, expert trainers, and a community that pushes you to be your best. Start your
+        fitness journey with Yash Body Grow today.</p>
+      <a href="pages/register.html" class="btn btn-primary">Join Now</a>
+      <a href="plans.html" class="btn btn-outline" style="color:#fff;border-color:#fff;">View Plans</a>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-title">
+        <h2>Why Choose Yash Body Grow</h2>
+        <p>Everything you need to reach your fitness goals</p>
+      </div>
+      <div class="grid grid-3">
+        <div class="card">
+          <h3>Modern Equipment</h3>
+          <p style="margin-top:10px;color:#666;">Top-of-the-line machines and free weights, regularly maintained and
+            upgraded.</p>
+        </div>
+        <div class="card">
+          <h3>Expert Trainers</h3>
+          <p style="margin-top:10px;color:#666;">Certified professionals who design personalized workout and diet plans
+            for you.</p>
+        </div>
+        <div class="card">
+          <h3>Track Your Progress</h3>
+          <p style="margin-top:10px;color:#666;">Log attendance, monitor payments, and follow your fitness journey
+            online, anytime.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="background:#fff;">
+    <div class="container">
+      <div class="section-title">
+        <h2>Membership Plans</h2>
+        <p>Simple pricing, no hidden fees</p>
+      </div>
+      <div id="plans-preview" class="grid grid-3">
+        <div class="empty-state">Loading plans...</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-title">
+        <h2>Gym Gallery</h2>
+        <p>A look inside Yash Body Grow</p>
+      </div>
+      <div id="gallery-preview" class="grid grid-4">
+        <div class="empty-state">Loading gallery...</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="background:#fff;">
+    <div class="container">
+      <div class="section-title">
+        <h2>What Our Members Say</h2>
+        <p>Real stories from the Yash Body Grow community</p>
+      </div>
+      <div id="testimonials-preview" class="grid grid-3">
+        <div class="empty-state">Loading testimonials...</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <p>&copy; 2026 Yash Body Grow Gym. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="js/api.js"></script>
+  <script>
+    async function loadPlansPreview() {
+      const el = document.getElementById('plans-preview');
+      try {
+        const data = await api.get('/plans');
+        const plans = (data.plans || []).filter(p => p.isActive).slice(0, 3);
+
+        if (!plans.length) {
+          el.innerHTML = '<div class="empty-state">No plans available yet. Check back soon.</div>';
+          return;
+        }
+
+        el.innerHTML = plans.map(p => `
+        <div class="card plan-card">
+          <h3>${p.name}</h3>
+          <div class="price">₹${p.price}<span>/${p.durationMonths} mo</span></div>
+          <ul>${(p.benefits || []).map(b => `<li>${b}</li>`).join('')}</ul>
+          <a href="pages/register.html" class="btn btn-primary btn-block">Get Started</a>
+        </div>
+      `).join('');
+      } catch {
+        el.innerHTML = '<div class="empty-state">View our full plan list on the Plans page.</div>';
+      }
+    }
+
+    async function loadGalleryPreview() {
+      const el = document.getElementById('gallery-preview');
+      try {
+        const data = await api.get('/gallery');
+        const items = (data.gallery || []).slice(0, 4);
+        if (!items.length) {
+          el.innerHTML = '<div class="empty-state">Gallery coming soon.</div>';
+          return;
+        }
+        el.innerHTML = items.map(i => `
+        <div class="card" style="padding:0;overflow:hidden;">
+          ${i.mediaType === 'image'
+            ? `<img src="${i.url}" alt="${i.title || ''}" style="width:100%;height:160px;object-fit:cover;" onerror="this.parentElement.style.display='none'"/>`
+            : `<a href="${i.url}" target="_blank" style="display:flex;align-items:center;justify-content:center;height:160px;background:#111;color:#fff;font-size:13px;">Watch Video</a>`}
+        </div>
+      `).join('');
+      } catch {
+        el.innerHTML = '<div class="empty-state">Gallery coming soon.</div>';
+      }
+    }
+
+    async function loadTestimonialsPreview() {
+      const el = document.getElementById('testimonials-preview');
+      try {
+        const data = await api.get('/testimonials');
+        const items = (data.testimonials || []).slice(0, 3);
+        if (!items.length) {
+          el.innerHTML = '<div class="empty-state">Be the first to leave a review after joining!</div>';
+          return;
+        }
+        el.innerHTML = items.map(t => `
+        <div class="card">
+          <div style="color:var(--primary);font-size:15px;margin-bottom:8px;">${'★'.repeat(t.rating)}${'☆'.repeat(5 - t.rating)}</div>
+          <p style="color:#555;font-size:14px;font-style:italic;">"${t.message}"</p>
+          <p style="margin-top:12px;font-weight:600;font-size:14px;">— ${t.name}</p>
+        </div>
+      `).join('');
+      } catch {
+        el.innerHTML = '<div class="empty-state">Be the first to leave a review after joining!</div>';
+      }
+    }
+
+    loadPlansPreview();
+    loadGalleryPreview();
+    loadTestimonialsPreview();
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payments - Yash Body Grow Admin</title>
+  <link rel="stylesheet" href="../../css/style.css" />
+</head>
+
+<body>
+
+  <nav class="navbar">
+    <div class="container">
+      <a href="dashboard.html" class="logo">YASH<span> BODY GROW</span> <small
+          style="font-size:12px;opacity:.6;">ADMIN</small></a>
+      <div class="nav-links">
+        <span id="admin-name" style="opacity:.8;font-size:14px;"></span>
+        <a href="#" id="logout-link" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff;">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="dash-layout">
+    <aside class="sidebar">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="members.html">Members</a>
+      <a href="trainers.html">Trainers</a>
+      <a href="plans.html">Membership Plans</a>
+      <a href="attendance.html">Attendance</a>
+      <a href="payments.html" class="active">Payments</a>
+      <a href="workouts.html">Workout Plans</a>
+      <a href="diets.html">Diet Plans</a>
+      <a href="progress.html">Progress Tracking</a>
+      <a href="schedule.html">Trainer Schedules</a>
+      <a href="gallery.html">Gallery</a>
+      <a href="testimonials.html">Testimonials</a>
+      <a href="messages.html">Enquiries</a>
+      <a href="notifications.html">Notifications</a>
+      <a href="reports.html">Reports</a>
+      <a href="../settings.html">Change Password</a>
+    </aside>
+
+    <main class="main-content">
+      <div class="page-header">
+        <h1>Payments</h1>
+        <button class="btn btn-primary" onclick="openAddModal()">+ Record Payment</button>
+      </div>
+
+      <div class="stats-row" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));">
+        <div class="stat-card accent">
+          <div class="label">Total Revenue (Paid)</div>
+          <div class="value" id="total-revenue">$0.00</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Records Found</div>
+          <div class="value" id="total-count">0</div>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <select id="filter-status">
+          <option value="">All Statuses</option>
+          <option value="paid">Paid</option>
+          <option value="pending">Pending</option>
+          <option value="failed">Failed</option>
+        </select>
+        <input type="date" id="filter-from" />
+        <input type="date" id="filter-to" />
+        <button class="btn btn-dark btn-sm" onclick="loadPayments()">Filter</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Receipt #</th>
+              <th>Member</th>
+              <th>Plan</th>
+              <th>Amount</th>
+              <th>Method</th>
+              <th>Status</th>
+              <th>Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="payments-tbody">
+            <tr>
+              <td colspan="8" class="empty-state">Loading...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-overlay" id="payment-modal">
+    <div class="modal">
+      <span class="modal-close" onclick="closeModal('payment-modal')">&times;</span>
+      <h3>Record Payment</h3>
+      <div id="payment-error" class="error-msg"></div>
+      <form id="payment-form">
+        <div class="form-group"><label>Member</label><select id="pay-member" required></select></div>
+        <div class="form-row">
+          <div class="form-group"><label>Amount ($)</label><input type="number" id="pay-amount" min="0" step="0.01"
+              required /></div>
+          <div class="form-group"><label>Method</label>
+            <select id="pay-method">
+              <option value="cash">Cash</option>
+              <option value="card">Card</option>
+              <option value="upi">UPI</option>
+              <option value="bank_transfer">Bank Transfer</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Status</label>
+            <select id="pay-status">
+              <option value="paid">Paid</option>
+              <option value="pending">Pending</option>
+              <option value="failed">Failed</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Date</label><input type="date" id="pay-date" /></div>
+        </div>
+        <div class="form-group"><label>Notes</label><input type="text" id="pay-notes" /></div>
+        <button type="submit" class="btn btn-primary btn-block">Save Payment</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="../../js/api.js"></script>
+  <script src="../../js/admin.js"></script>
+  <script>
+    requireAdmin();
+    document.getElementById('admin-name').textContent = Auth.getUser()?.name || '';
+    document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+    // If linked here with ?status=pending/paid/failed, pre-apply that filter
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialStatus = urlParams.get('status');
+    if (initialStatus) document.getElementById('filter-status').value = initialStatus;
+
+    async function loadMemberOptions() {
+      try {
+        const data = await api.get('/members');
+        const opts = (data.members || []).map(m => `<option value="${m._id}">${m.user?.name || 'Unknown'}</option>`).join('');
+        document.getElementById('pay-member').innerHTML = opts;
+      } catch (err) { console.error(err); }
+    }
+
+    function openAddModal() {
+      document.getElementById('payment-form').reset();
+      document.getElementById('pay-date').value = new Date().toISOString().substring(0, 10);
+      hideMessage(document.getElementById('payment-error'));
+      openModal('payment-modal');
+    }
+
+    document.getElementById('payment-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errBox = document.getElementById('payment-error');
+      hideMessage(errBox);
+      try {
+        await api.post('/payments', {
+          memberId: document.getElementById('pay-member').value,
+          amount: Number(document.getElementById('pay-amount').value),
+          method: document.getElementById('pay-method').value,
+          status: document.getElementById('pay-status').value,
+          paymentDate: document.getElementById('pay-date').value,
+          notes: document.getElementById('pay-notes').value.trim()
+        });
+        closeModal('payment-modal');
+        loadPayments();
+      } catch (err) {
+        showMessage(errBox, err.message);
+      }
+    });
+
+    async function loadPayments() {
+      const tbody = document.getElementById('payments-tbody');
+      tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Loading...</td></tr>`;
+      try {
+        const params = new URLSearchParams();
+        const status = document.getElementById('filter-status').value;
+        const from = document.getElementById('filter-from').value;
+        const to = document.getElementById('filter-to').value;
+        if (status) params.set('status', status);
+        if (from) params.set('from', from);
+        if (to) params.set('to', to);
+
+        const data = await api.get(`/payments?${params.toString()}`);
+        const payments = data.payments || [];
+        document.getElementById('total-revenue').textContent = formatCurrency(data.totalRevenue);
+        document.getElementById('total-count').textContent = data.count;
+
+        if (!payments.length) {
+          tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No payments found.</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = payments.map(p => `
+        <tr>
+          <td>${p.receiptNo}</td>
+          <td>${p.member?.user?.name || 'Unknown'}</td>
+          <td>${p.plan?.name || '-'}</td>
+          <td>${formatCurrency(p.amount)}</td>
+          <td>${p.method}</td>
+          <td><span class="badge badge-${p.status}">${p.status}</span></td>
+          <td>${formatDate(p.paymentDate)}</td>
+          <td class="actions">
+            <button class="btn btn-sm btn-danger" onclick="deletePayment('${p._id}')">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Error: ${err.message}</td></tr>`;
+      }
+    }
+
+    async function deletePayment(id) {
+      if (!confirm('Delete this payment record?')) return;
+      try {
+        await api.delete(`/payments/${id}`);
+        loadPayments();
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    loadMemberOptions();
+    loadPayments();
+  </script>
+</body>
+
+</html>

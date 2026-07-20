@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gym Check-in QR - Yash Body Grow Admin</title>
+    <link rel="stylesheet" href="../../css/style.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        .print-only {
+            display: none;
+        }
+
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            .print-only, .print-only * {
+                visibility: visible;
+            }
+            .print-only {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100vh;
+                text-align: center;
+                margin: 0;
+                padding: 0;
+            }
+            .print-only h1 {
+                font-size: 60px;
+                margin-bottom: 20px;
+            }
+            .print-only h2 {
+                font-size: 40px;
+                margin-bottom: 40px;
+            }
+            .print-only .qr-wrapper {
+                transform: scale(2);
+                margin: 50px 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="dashboard.html" class="logo">YASH<span> BODY GROW</span> <small
+                    style="font-size:12px;opacity:.6;">ADMIN</small></a>
+            <div class="nav-links">
+                <span id="admin-name" style="opacity:.8;font-size:14px;"></span>
+                <a href="#" id="logout-link" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff;">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dash-layout">
+        <aside class="sidebar">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="members.html">Members</a>
+            <a href="trainers.html">Trainers</a>
+            <a href="plans.html">Membership Plans</a>
+            <a href="attendance.html">Attendance</a>
+            <a href="payments.html">Payments</a>
+            <a href="workouts.html">Workout Plans</a>
+            <a href="diets.html">Diet Plans</a>
+            <a href="progress.html">Progress Tracking</a>
+            <a href="schedule.html">Trainer Schedules</a>
+            <a href="gallery.html">Gallery</a>
+            <a href="testimonials.html">Testimonials</a>
+            <a href="messages.html">Enquiries</a>
+            <a href="notifications.html">Notifications</a>
+            <a href="reports.html">Reports</a>
+            <a href="../settings.html">Change Password</a>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1>Gym Check-in QR Code</h1>
+            </div>
+
+            <div class="card" style="max-width:500px;text-align:center;margin:0 auto;">
+                <h3 style="margin-bottom:14px;">Print & Display at Entrance</h3>
+                <p style="color:var(--gray);font-size:14px;margin-bottom:24px;">
+                    Members will scan this single QR code with their own phones to automatically check in and check out.
+                </p>
+
+                <div id="qr-container"
+                    style="display:flex;justify-content:center;padding:20px;background:#fff;border:1px solid #eee;border-radius:12px;margin: 0 auto;width:fit-content;">
+                </div>
+
+                <div style="margin-top:24px;display:flex;gap:12px;justify-content:center;">
+                    <button class="btn btn-primary" onclick="window.print()">🖨️ Print Poster</button>
+                    <a href="dashboard.html" class="btn btn-outline">Back to Dashboard</a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Print Layout -->
+    <div class="print-only">
+        <h1>YASH BODY GROW GYM</h1>
+        <h2>Scan to Check In / Out</h2>
+        <div class="qr-wrapper" id="qr-print-container"></div>
+        <h3 style="margin-top:60px;">Point your phone camera here</h3>
+    </div>
+
+    <script src="../../js/api.js"></script>
+    <script src="../../js/admin.js"></script>
+    <script>
+        requireAdmin();
+        document.getElementById('admin-name').textContent = Auth.getUser()?.name || '';
+        document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+        // Generate the URL that members will visit when scanning the QR code
+        // We use window.location.origin to dynamically build the absolute URL to the member punch page
+        const checkinUrl = window.location.origin + '/pages/member/checkin-action.html';
+        
+        // Render on screen
+        new QRCode(document.getElementById('qr-container'), {
+            text: checkinUrl,
+            width: 250,
+            height: 250,
+            colorDark: '#14161a',
+            colorLight: '#ffffff'
+        });
+
+        // Render for print
+        new QRCode(document.getElementById('qr-print-container'), {
+            text: checkinUrl,
+            width: 250,
+            height: 250,
+            colorDark: '#14161a',
+            colorLight: '#ffffff'
+        });
+    </script>
+</body>
+
+</html>

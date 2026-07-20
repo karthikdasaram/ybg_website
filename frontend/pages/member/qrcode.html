@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My QR Code - Yash Body Grow Gym</title>
+    <link rel="stylesheet" href="../../css/style.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="dashboard.html" class="logo">YASH<span> BODY GROW</span></a>
+            <div class="nav-links">
+                <span id="member-name" style="opacity:.8;font-size:14px;"></span>
+                <a href="#" id="logout-link" class="btn btn-outline btn-sm"
+                    style="color:#fff;border-color:#fff;">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dash-layout">
+        <aside class="sidebar">
+            <a href="dashboard.html">My Dashboard</a>
+            <a href="attendance.html">My Attendance</a>
+            <a href="payments.html">My Payments</a>
+            <a href="workouts.html">Workout Plans</a>
+            <a href="diets.html">Diet Plans</a>
+            <a href="progress.html">My Progress</a>
+            <a href="qrcode.html" class="active">My QR Code</a>
+            <a href="notifications.html">Notifications</a>
+            <a href="feedback.html">Leave Feedback</a>
+            <a href="../settings.html">Change Password</a>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1>My Check-in QR Code</h1>
+            </div>
+
+            <div class="card" style="max-width:420px;text-align:center;">
+                <p style="color:var(--gray);font-size:14px;margin-bottom:20px;">
+                    Show this code at the front-desk kiosk to check in when you arrive, and scan it again to check out
+                    when you leave. First scan of the day checks you in, second checks you out.
+                </p>
+
+                <div id="qr-error" class="error-msg"></div>
+                <div id="qr-container"
+                    style="display:flex;justify-content:center;padding:20px;background:#fff;border:1px solid #eee;border-radius:12px;">
+                    <div class="empty-state">Loading your QR code...</div>
+                </div>
+
+                <p id="qr-member-name" style="margin-top:16px;font-weight:700;font-size:16px;"></p>
+                <p style="color:var(--gray);font-size:12px;margin-top:4px;">Keep this private — anyone with this code
+                    can check in/out as you. If it's ever lost or shared by mistake, ask the front desk to reset it.</p>
+
+                <button class="btn btn-dark btn-sm" style="margin-top:16px;" onclick="window.print()">Print QR
+                    Code</button>
+            </div>
+        </main>
+    </div>
+
+    <script src="../../js/api.js"></script>
+    <script src="../../js/admin.js"></script>
+    <script>
+        requireMember();
+        document.getElementById('member-name').textContent = Auth.getUser()?.name || '';
+        document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+        async function loadQrCode() {
+            const container = document.getElementById('qr-container');
+            const errBox = document.getElementById('qr-error');
+            try {
+                const data = await api.get('/members/me');
+                const member = data.member;
+
+                if (!member.checkinToken) {
+                    showMessage(errBox, 'No check-in code found for your account yet. Please refresh, or contact the front desk.');
+                    container.innerHTML = '';
+                    return;
+                }
+
+                document.getElementById('qr-member-name').textContent = member.user?.name || '';
+                container.innerHTML = '';
+                // eslint-disable-next-line no-undef
+                new QRCode(container, {
+                    text: member.checkinToken,
+                    width: 220,
+                    height: 220,
+                    colorDark: '#14161a',
+                    colorLight: '#ffffff'
+                });
+            } catch (err) {
+                showMessage(errBox, 'Could not load your QR code: ' + err.message);
+            }
+        }
+
+        loadQrCode();
+    </script>
+</body>
+
+</html>

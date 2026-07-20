@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trainer Schedules - Yash Body Grow Admin</title>
+    <link rel="stylesheet" href="../../css/style.css" />
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="dashboard.html" class="logo">YASH<span> BODY GROW</span> <small
+                    style="font-size:12px;opacity:.6;">ADMIN</small></a>
+            <div class="nav-links">
+                <span id="admin-name" style="opacity:.8;font-size:14px;"></span>
+                <a href="#" id="logout-link" class="btn btn-outline btn-sm"
+                    style="color:#fff;border-color:#fff;">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dash-layout">
+        <aside class="sidebar">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="members.html">Members</a>
+            <a href="trainers.html">Trainers</a>
+            <a href="plans.html">Membership Plans</a>
+            <a href="attendance.html">Attendance</a>
+            <a href="payments.html">Payments</a>
+            <a href="workouts.html">Workout Plans</a>
+            <a href="diets.html">Diet Plans</a>
+            <a href="progress.html">Progress Tracking</a>
+            <a href="schedule.html" class="active">Trainer Schedules</a>
+            <a href="gallery.html">Gallery</a>
+            <a href="testimonials.html">Testimonials</a>
+            <a href="messages.html">Enquiries</a>
+            <a href="notifications.html">Notifications</a>
+            <a href="reports.html">Reports</a>
+            <a href="../settings.html">Change Password</a>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1>Trainer Schedules</h1>
+            </div>
+
+            <div class="toolbar">
+                <select id="filter-trainer" onchange="loadSchedule()">
+                    <option value="">All Trainers</option>
+                </select>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Trainer</th>
+                            <th>Day</th>
+                            <th>Time</th>
+                            <th>Title</th>
+                            <th>Member</th>
+                        </tr>
+                    </thead>
+                    <tbody id="schedule-tbody">
+                        <tr>
+                            <td colspan="5" class="empty-state">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script src="../../js/api.js"></script>
+    <script src="../../js/admin.js"></script>
+    <script>
+        requireAdmin();
+        document.getElementById('admin-name').textContent = Auth.getUser()?.name || '';
+        document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+        const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+        async function loadTrainerOptions() {
+            const data = await api.get('/trainers');
+            document.getElementById('filter-trainer').innerHTML = '<option value="">All Trainers</option>' +
+                (data.trainers || []).map(t => `<option value="${t._id}">${t.name}</option>`).join('');
+        }
+
+        async function loadSchedule() {
+            const tbody = document.getElementById('schedule-tbody');
+            tbody.innerHTML = `<tr><td colspan="5" class="empty-state">Loading...</td></tr>`;
+            try {
+                const trainerId = document.getElementById('filter-trainer').value;
+                const params = trainerId ? `?trainerId=${trainerId}` : '';
+                const data = await api.get(`/schedules${params}`);
+                const schedules = (data.schedules || []).slice().sort((a, b) => dayOrder.indexOf(a.dayOfWeek) - dayOrder.indexOf(b.dayOfWeek) || a.startTime.localeCompare(b.startTime));
+                if (!schedules.length) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No schedule entries found.</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = schedules.map(s => `
+        <tr>
+          <td>${s.trainer?.name || '-'}</td>
+          <td style="text-transform:capitalize;">${s.dayOfWeek}</td>
+          <td>${s.startTime} - ${s.endTime}</td>
+          <td>${s.title}</td>
+          <td>${s.member?.user?.name || '-'}</td>
+        </tr>
+      `).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="5" class="empty-state">Error: ${err.message}</td></tr>`;
+            }
+        }
+
+        loadTrainerOptions();
+        loadSchedule();
+    </script>
+</body>
+
+</html>

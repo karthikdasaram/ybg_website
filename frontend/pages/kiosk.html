@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>QR Check-in Kiosk — Yash Body Grow Gym</title>
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" />
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        /* ───────── Reset & base ───────── */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --primary: #ff4d30;
+            --primary-glow: rgba(255, 77, 48, .35);
+            --dark: #0c0e12;
+            --dark-2: #14171d;
+            --dark-3: #1e222b;
+            --surface: #1a1e27;
+            --surface-2: #252a35;
+            --text: #f0f1f4;
+            --text-muted: #8a8f98;
+            --success: #2ecc71;
+            --success-glow: rgba(46, 204, 113, .3);
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --radius: 16px;
+        }
+
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            background: var(--dark);
+            color: var(--text);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* ───────── Layout ───────── */
+        .kiosk-shell {
+            display: flex;
+            flex-direction: column;
+            height: 100dvh;
+            /* modern dynamic vh */
+        }
+
+        /* ── Top bar ── */
+        .kiosk-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 24px;
+            background: var(--dark-2);
+            border-bottom: 1px solid rgba(255, 255, 255, .06);
+            flex-shrink: 0;
+        }
+
+        .kiosk-topbar .brand {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: .4px;
+        }
+
+        .kiosk-topbar .brand span {
+            color: var(--primary);
+        }
+
+        .kiosk-topbar .clock {
+            font-variant-numeric: tabular-nums;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        /* ── Body ── */
+        .kiosk-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            gap: 28px;
+            position: relative;
+        }
+
+        /* ── Instruction prompt ── */
+        .scan-prompt {
+            text-align: center;
+        }
+
+        .scan-prompt h1 {
+            font-size: clamp(22px, 4vw, 32px);
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+
+        .scan-prompt p {
+            color: var(--text-muted);
+            font-size: clamp(13px, 2vw, 15px);
+        }
+
+        /* ── Scanner viewport ── */
+        .scanner-frame {
+            position: relative;
+            width: min(340px, 80vw);
+            height: min(340px, 80vw);
+            border-radius: var(--radius);
+            overflow: hidden;
+            background: var(--dark-3);
+            box-shadow: 0 0 0 3px var(--primary), 0 0 60px var(--primary-glow);
+            transition: box-shadow .4s ease;
+        }
+
+        .scanner-frame.scanning {
+            animation: pulse-border 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-border {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 3px var(--primary), 0 0 30px var(--primary-glow);
+            }
+
+            50% {
+                box-shadow: 0 0 0 4px var(--primary), 0 0 60px var(--primary-glow);
+            }
+        }
+
+        /* Corner markers inside the scanner */
+        .scanner-frame::before,
+        .scanner-frame::after {
+            content: '';
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--primary);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .scanner-frame::before {
+            top: 12px;
+            left: 12px;
+            border-right: none;
+            border-bottom: none;
+            border-radius: 4px 0 0 0;
+        }
+
+        .scanner-frame::after {
+            bottom: 12px;
+            right: 12px;
+            border-left: none;
+            border-top: none;
+            border-radius: 0 0 4px 0;
+        }
+
+        .corner-tr,
+        .corner-bl {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--primary);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .corner-tr {
+            top: 12px;
+            right: 12px;
+            border-left: none;
+            border-bottom: none;
+            border-radius: 0 4px 0 0;
+        }
+
+        .corner-bl {
+            bottom: 12px;
+            left: 12px;
+            border-right: none;
+            border-top: none;
+            border-radius: 0 0 0 4px;
+        }
+
+        /* Scan-line animation */
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 10%;
+            width: 80%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            z-index: 10;
+            pointer-events: none;
+            animation: sweep 2s ease-in-out infinite;
+            border-radius: 2px;
+            box-shadow: 0 0 12px var(--primary-glow);
+        }
+
+        @keyframes sweep {
+            0% {
+                top: 10%;
+                opacity: 1;
+            }
+
+            50% {
+                top: 88%;
+                opacity: .6;
+            }
+
+            100% {
+                top: 10%;
+                opacity: 1;
+            }
+        }
+
+        #qr-reader {
+            width: 100%;
+            height: 100%;
+        }
+
+        #qr-reader video {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            border-radius: var(--radius);
+        }
+
+        /* html5-qrcode UI overrides – hide its built-in controls */
+        #qr-reader__scan_region {
+            min-height: unset !important;
+        }
+
+        #qr-reader__dashboard {
+            display: none !important;
+        }
+
+        #qr-reader__header_message {
+            display: none !important;
+        }
+
+        #qr-reader img[alt="Info icon"],
+        #qr-reader__camera_permission_button {
+            display: none !important;
+        }
+
+        /* ───────── Result overlay ───────── */
+        .result-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 32px;
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .35s ease;
+        }
+
+        .result-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .result-overlay .backdrop {
+            position: absolute;
+            inset: 0;
+            backdrop-filter: blur(20px) brightness(.3);
+            -webkit-backdrop-filter: blur(20px) brightness(.3);
+        }
+
+        .result-overlay .content {
+            position: relative;
+            z-index: 1;
+            animation: pop-in .4s cubic-bezier(.34, 1.56, .64, 1);
+        }
+
+        @keyframes pop-in {
+            0% {
+                transform: scale(.7);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .result-icon {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            font-size: 48px;
+        }
+
+        .result-icon.check-in {
+            background: var(--success-glow);
+            color: var(--success);
+            box-shadow: 0 0 50px var(--success-glow);
+        }
+
+        .result-icon.check-out {
+            background: rgba(52, 152, 219, .2);
+            color: #3498db;
+            box-shadow: 0 0 50px rgba(52, 152, 219, .2);
+        }
+
+        .result-icon.error {
+            background: rgba(231, 76, 60, .2);
+            color: var(--danger);
+            box-shadow: 0 0 50px rgba(231, 76, 60, .2);
+        }
+
+        .result-icon.already {
+            background: rgba(243, 156, 18, .2);
+            color: var(--warning);
+            box-shadow: 0 0 50px rgba(243, 156, 18, .2);
+        }
+
+        .result-name {
+            font-size: clamp(26px, 5vw, 40px);
+            font-weight: 900;
+            margin-bottom: 8px;
+        }
+
+        .result-msg {
+            font-size: clamp(14px, 2.5vw, 18px);
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .result-time {
+            font-size: 13px;
+            color: var(--text-muted);
+            opacity: .7;
+            margin-top: 8px;
+        }
+
+        .result-duration {
+            margin-top: 12px;
+            font-size: 15px;
+            color: #3498db;
+            font-weight: 600;
+        }
+
+        /* ── Status ticker (bottom) ── */
+        .status-bar {
+            padding: 10px 24px;
+            background: var(--dark-2);
+            border-top: 1px solid rgba(255, 255, 255, .06);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+            background: var(--success);
+            animation: blink 2s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: .3;
+            }
+        }
+
+        /* ── Recent activity feed ── */
+        .recent-feed {
+            position: absolute;
+            bottom: 80px;
+            left: 24px;
+            right: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .feed-item {
+            background: var(--surface);
+            border: 1px solid rgba(255, 255, 255, .06);
+            border-radius: 10px;
+            padding: 10px 16px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slide-up .3s ease-out;
+            backdrop-filter: blur(10px);
+        }
+
+        @keyframes slide-up {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .feed-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .feed-dot.in {
+            background: var(--success);
+        }
+
+        .feed-dot.out {
+            background: #3498db;
+        }
+
+        .feed-dot.err {
+            background: var(--danger);
+        }
+
+        .feed-time {
+            color: var(--text-muted);
+            margin-left: auto;
+            font-variant-numeric: tabular-nums;
+            flex-shrink: 0;
+        }
+
+        /* ── Camera error state ── */
+        .camera-error {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-muted);
+            font-size: 14px;
+            text-align: center;
+            padding: 24px;
+            gap: 16px;
+        }
+
+        .camera-error .icon {
+            font-size: 48px;
+            opacity: .4;
+        }
+
+        .camera-error .retry-btn {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform .15s;
+        }
+
+        .camera-error .retry-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        /* ── Fullscreen button ── */
+        .fs-btn {
+            background: var(--surface-2);
+            border: 1px solid rgba(255, 255, 255, .1);
+            color: var(--text-muted);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background .15s, color .15s;
+        }
+
+        .fs-btn:hover {
+            background: var(--primary);
+            color: #fff;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="kiosk-shell">
+        <!-- ─── Top bar ─── -->
+        <header class="kiosk-topbar">
+            <div class="brand">YASH<span> BODY GROW</span></div>
+            <div style="display:flex;align-items:center;gap:14px;">
+                <span class="clock" id="clock"></span>
+                <button class="fs-btn" id="fs-btn" title="Toggle fullscreen">⛶ Fullscreen</button>
+            </div>
+        </header>
+
+        <!-- ─── Main body ─── -->
+        <div class="kiosk-body">
+            <div class="scan-prompt">
+                <h1>Scan Your QR Code</h1>
+                <p>Hold your QR code steady in front of the camera to check in or out</p>
+            </div>
+
+            <div class="scanner-frame scanning" id="scanner-frame">
+                <div class="corner-tr"></div>
+                <div class="corner-bl"></div>
+                <div class="scan-line"></div>
+                <div id="qr-reader"></div>
+            </div>
+
+            <!-- Recent activity feed -->
+            <div class="recent-feed" id="recent-feed"></div>
+        </div>
+
+        <!-- ─── Status bar ─── -->
+        <div class="status-bar">
+            <span><span class="status-dot"></span> Scanner active</span>
+            <span id="scan-count">0 scans today</span>
+        </div>
+    </div>
+
+    <!-- ─── Result overlay ─── -->
+    <div class="result-overlay" id="result-overlay">
+        <div class="backdrop"></div>
+        <div class="content">
+            <div class="result-icon" id="result-icon"></div>
+            <div class="result-name" id="result-name"></div>
+            <div class="result-msg" id="result-msg"></div>
+            <div class="result-duration" id="result-duration"></div>
+            <div class="result-time" id="result-time"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:5000/api';
+
+        // ── Clock ──
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').textContent = now.toLocaleString('en-IN', {
+                weekday: 'short', day: 'numeric', month: 'short',
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                hour12: true
+            });
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        // ── Fullscreen toggle ──
+        document.getElementById('fs-btn').addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen?.().catch(() => { });
+            } else {
+                document.exitFullscreen?.();
+            }
+        });
+
+        // ── State ──
+        let scanCount = 0;
+        let isProcessing = false;
+        let lastScannedToken = '';
+        let lastScanTime = 0;
+        const DEBOUNCE_MS = 4000;        // ignore duplicate scans for 4s
+        const OVERLAY_DISPLAY_MS = 3000; // show result for 3s
+        const feedItems = [];
+        const MAX_FEED = 3;
+
+        // ── Scanner ──
+        const html5QrCode = new Html5Qrcode('qr-reader');
+        const scannerConfig = {
+            fps: 10,
+            qrbox: function (viewfinderWidth, viewfinderHeight) {
+                const size = Math.min(viewfinderWidth, viewfinderHeight);
+                return { width: Math.floor(size * 0.75), height: Math.floor(size * 0.75) };
+            },
+            aspectRatio: 1.0,
+            showTorchButtonIfSupported: false,
+            showZoomSliderIfSupported: false,
+        };
+
+        function startScanner() {
+            html5QrCode.start(
+                { facingMode: 'environment' },
+                scannerConfig,
+                onScanSuccess,
+                () => { /* ignore scan failures (no-qr-in-frame) */ }
+            ).catch(err => {
+                console.error('Camera error:', err);
+                document.getElementById('qr-reader').innerHTML = `
+                    <div class="camera-error">
+                        <div class="icon">📷</div>
+                        <div><strong>Camera not available</strong></div>
+                        <div>Please allow camera access and make sure no other app is using it.</div>
+                        <button class="retry-btn" onclick="location.reload()">↻ Retry</button>
+                    </div>
+                `;
+                document.getElementById('scanner-frame').classList.remove('scanning');
+            });
+        }
+        startScanner();
+
+        // ── Handle successful scan ──
+        async function onScanSuccess(decodedText) {
+            const now = Date.now();
+
+            // De-bounce: ignore same token within cooldown
+            if (decodedText === lastScannedToken && now - lastScanTime < DEBOUNCE_MS) return;
+            if (isProcessing) return;
+
+            isProcessing = true;
+            lastScannedToken = decodedText;
+            lastScanTime = now;
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/attendance/punch`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: decodedText })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    showResult('error', '', data.message || 'Scan failed', null, null);
+                    addFeedItem('err', data.message || 'Unknown QR');
+                } else if (data.action === 'in') {
+                    showResult('check-in', data.memberName, 'Checked In — Welcome!', null, data.time);
+                    addFeedItem('in', `${data.memberName} checked in`);
+                } else if (data.action === 'out') {
+                    const durText = data.durationMinutes != null
+                        ? `Session: ${formatDuration(data.durationMinutes)}` : '';
+                    showResult('check-out', data.memberName, 'Checked Out — See you next time!', durText, data.time);
+                    addFeedItem('out', `${data.memberName} checked out (${formatDuration(data.durationMinutes)})`);
+                } else if (data.action === 'already-done') {
+                    showResult('already', data.memberName, 'Already checked in & out today', null, null);
+                    addFeedItem('err', `${data.memberName} already done today`);
+                }
+
+                scanCount++;
+                document.getElementById('scan-count').textContent = `${scanCount} scan${scanCount === 1 ? '' : 's'} today`;
+            } catch (err) {
+                showResult('error', '', 'Network error — please try again', null, null);
+                addFeedItem('err', 'Network error');
+            }
+
+            // Auto-dismiss overlay
+            setTimeout(() => {
+                document.getElementById('result-overlay').classList.remove('show');
+                isProcessing = false;
+            }, OVERLAY_DISPLAY_MS);
+        }
+
+        // ── Show result overlay ──
+        function showResult(type, name, msg, duration, time) {
+            const icons = {
+                'check-in': '✓',
+                'check-out': '↩',
+                'error': '✕',
+                'already': '⏱'
+            };
+            const iconEl = document.getElementById('result-icon');
+            iconEl.className = 'result-icon ' + type;
+            iconEl.textContent = icons[type] || '?';
+
+            document.getElementById('result-name').textContent = name || '';
+            document.getElementById('result-msg').textContent = msg;
+            document.getElementById('result-duration').textContent = duration || '';
+            document.getElementById('result-time').textContent = time
+                ? new Date(time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+                : '';
+
+            document.getElementById('result-overlay').classList.add('show');
+        }
+
+        // ── Activity feed ──
+        function addFeedItem(type, text) {
+            const feed = document.getElementById('recent-feed');
+            const timeStr = new Date().toLocaleTimeString('en-IN', {
+                hour: '2-digit', minute: '2-digit', hour12: true
+            });
+
+            feedItems.unshift({ type, text, timeStr });
+            if (feedItems.length > MAX_FEED) feedItems.pop();
+
+            feed.innerHTML = feedItems.map(item => `
+                <div class="feed-item">
+                    <span class="feed-dot ${item.type}"></span>
+                    <span>${item.text}</span>
+                    <span class="feed-time">${item.timeStr}</span>
+                </div>
+            `).join('');
+        }
+
+        // ── Helpers ──
+        function formatDuration(minutes) {
+            if (minutes == null) return '';
+            if (minutes < 60) return `${minutes} min`;
+            const h = Math.floor(minutes / 60);
+            const m = minutes % 60;
+            return m > 0 ? `${h}h ${m}m` : `${h}h`;
+        }
+    </script>
+</body>
+
+</html>

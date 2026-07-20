@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Dashboard - Yash Body Grow Gym</title>
+  <link rel="stylesheet" href="../../css/style.css" />
+</head>
+
+<body>
+
+  <nav class="navbar">
+    <div class="container">
+      <a href="dashboard.html" class="logo">YASH<span> BODY GROW</span></a>
+      <div class="nav-links">
+        <span id="member-name" style="opacity:.8;font-size:14px;"></span>
+        <a href="#" id="logout-link" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff;">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="dash-layout">
+    <aside class="sidebar">
+      <a href="dashboard.html" class="active">My Dashboard</a>
+      <a href="attendance.html">My Attendance</a>
+      <a href="payments.html">My Payments</a>
+      <a href="../settings.html">Change Password</a>
+    </aside>
+
+    <main class="main-content">
+      <div class="page-header">
+        <h1>Welcome back</h1>
+      </div>
+
+      <div id="profile-card" class="card" style="margin-bottom:24px;">
+        <div class="empty-state">Loading your profile...</div>
+      </div>
+
+      <div class="grid grid-3">
+        <div class="card">
+          <h3 style="margin-bottom:10px;">Membership Plan</h3>
+          <div id="plan-info">-</div>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:10px;">Assigned Trainer</h3>
+          <div id="trainer-info">-</div>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:10px;">Membership Status</h3>
+          <div id="status-info">-</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="../../js/api.js"></script>
+  <script src="../../js/admin.js"></script>
+  <script>
+    requireMember();
+    document.getElementById('member-name').textContent = Auth.getUser()?.name || '';
+    document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+    async function loadProfile() {
+      const card = document.getElementById('profile-card');
+      try {
+        const data = await api.get('/members/me');
+        const m = data.member;
+
+        card.innerHTML = `
+        <h3>${m.user?.name || ''}</h3>
+        <p style="color:var(--gray);font-size:14px;margin-top:4px;">${m.user?.email || ''}</p>
+        <div style="display:flex;gap:24px;margin-top:16px;flex-wrap:wrap;font-size:14px;">
+          <div><strong>Phone:</strong> ${m.phone || '-'}</div>
+          <div><strong>Address:</strong> ${m.address || '-'}</div>
+          <div><strong>Joined:</strong> ${formatDate(m.joinDate)}</div>
+        </div>
+      `;
+
+        document.getElementById('plan-info').innerHTML = m.plan
+          ? `<strong>${m.plan.name}</strong><br/><span style="color:var(--gray);font-size:13px;">${formatCurrency(m.plan.price)} / ${m.plan.durationMonths} mo</span>`
+          : `<span style="color:var(--gray);">No active plan yet.</span>`;
+
+        document.getElementById('trainer-info').innerHTML = m.assignedTrainer
+          ? `<strong>${m.assignedTrainer.name}</strong><br/><span style="color:var(--gray);font-size:13px;">${m.assignedTrainer.specialization || ''}</span>`
+          : `<span style="color:var(--gray);">Not assigned yet.</span>`;
+
+        document.getElementById('status-info').innerHTML = `
+        <span class="badge badge-${m.membershipStatus}">${m.membershipStatus}</span><br/>
+        ${m.membershipEnd ? `<span style="color:var(--gray);font-size:13px;">Expires: ${formatDate(m.membershipEnd)}</span>` : ''}
+      `;
+      } catch (err) {
+        card.innerHTML = `<div class="empty-state">Error loading profile: ${err.message}</div>`;
+      }
+    }
+
+    loadProfile();
+  </script>
+</body>
+
+</html>

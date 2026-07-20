@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Leave Feedback - Yash Body Grow Gym</title>
+    <link rel="stylesheet" href="../../css/style.css" />
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="dashboard.html" class="logo">YASH<span> BODY GROW</span></a>
+            <div class="nav-links">
+                <span id="member-name" style="opacity:.8;font-size:14px;"></span>
+                <a href="#" id="logout-link" class="btn btn-outline btn-sm"
+                    style="color:#fff;border-color:#fff;">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dash-layout">
+        <aside class="sidebar">
+            <a href="dashboard.html">My Dashboard</a>
+            <a href="attendance.html">My Attendance</a>
+            <a href="payments.html">My Payments</a>
+            <a href="workouts.html">Workout Plans</a>
+            <a href="diets.html">Diet Plans</a>
+            <a href="progress.html">My Progress</a>
+            <a href="notifications.html">Notifications</a>
+            <a href="feedback.html" class="active">Leave Feedback</a>
+            <a href="../settings.html">Change Password</a>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1>Leave Feedback</h1>
+            </div>
+
+            <div class="card" style="max-width:520px;">
+                <p style="color:var(--gray);font-size:14px;margin-bottom:18px;">Share your experience at PowerFit.
+                    Approved testimonials may be featured on our website.</p>
+                <div id="fb-error" class="error-msg"></div>
+                <div id="fb-success" class="success-msg"></div>
+                <form id="fb-form">
+                    <div class="form-group">
+                        <label>Rating</label>
+                        <select id="fb-rating">
+                            <option value="5">★★★★★ Excellent</option>
+                            <option value="4">★★★★☆ Good</option>
+                            <option value="3">★★★☆☆ Average</option>
+                            <option value="2">★★☆☆☆ Below Average</option>
+                            <option value="1">★☆☆☆☆ Poor</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Your Message</label>
+                        <textarea id="fb-message" rows="4" required
+                            placeholder="Tell us about your experience..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Submit Feedback</button>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script src="../../js/api.js"></script>
+    <script src="../../js/admin.js"></script>
+    <script>
+        requireMember();
+        document.getElementById('member-name').textContent = Auth.getUser()?.name || '';
+        document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+        document.getElementById('fb-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errBox = document.getElementById('fb-error');
+            const okBox = document.getElementById('fb-success');
+            hideMessage(errBox);
+            hideMessage(okBox);
+            try {
+                await api.post('/testimonials', {
+                    message: document.getElementById('fb-message').value.trim(),
+                    rating: Number(document.getElementById('fb-rating').value)
+                });
+                showMessage(okBox, 'Thank you! Your feedback has been submitted for review.', false);
+                document.getElementById('fb-form').reset();
+            } catch (err) {
+                showMessage(errBox, err.message);
+            }
+        });
+    </script>
+</body>
+
+</html>

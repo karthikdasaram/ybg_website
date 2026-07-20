@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign Up - Yash Body Grow Gym</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+
+<body>
+
+  <nav class="navbar">
+    <div class="container">
+      <a href="../index.html" class="logo">YASH<span> BODY GROW</span></a>
+      <div class="nav-links">
+        <a href="../index.html">Home</a>
+        <a href="../plans.html">Plans</a>
+        <a href="../trainers.html">Trainers</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <h2>Join Yash Body Grow</h2>
+      <p class="sub">Create your member account</p>
+
+      <div id="error-box" class="error-msg"></div>
+
+      <form id="register-form">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="name" required />
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="email" required autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="text" id="phone" />
+        </div>
+        <div class="form-group">
+          <label>Membership Plan (Optional)</label>
+          <select id="plan">
+            <option value="">Select a plan...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="password" required minlength="6" autocomplete="new-password" />
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Create Account</button>
+      </form>
+
+      <p class="auth-footer">
+        Already have an account? <a href="login.html" style="color:var(--primary);font-weight:600;">Log in</a>
+      </p>
+    </div>
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script>
+    if (Auth.isLoggedIn()) {
+      window.location.href = Auth.isAdmin() ? 'admin/dashboard.html' : 'member/dashboard.html';
+    }
+
+    // Load membership plans
+    async function loadPlans() {
+      try {
+        const data = await api.get('/plans');
+        const plans = (data.plans || []).filter(p => p.isActive);
+        const planSelect = document.getElementById('plan');
+        plans.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p._id;
+          opt.textContent = `${p.name} - ₹${p.price} / ${p.durationMonths} month(s)`;
+          planSelect.appendChild(opt);
+        });
+      } catch (err) {
+        console.error('Could not load plans:', err);
+      }
+    }
+    loadPlans();
+
+    const form = document.getElementById('register-form');
+    const errorBox = document.getElementById('error-box');
+    const submitBtn = document.getElementById('submit-btn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideMessage(errorBox);
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating account...';
+
+      try {
+        const payload = {
+          name: document.getElementById('name').value.trim(),
+          email: document.getElementById('email').value.trim(),
+          phone: document.getElementById('phone').value.trim(),
+          password: document.getElementById('password').value,
+          planId: document.getElementById('plan').value || undefined
+        };
+
+        const data = await api.post('/auth/register', payload);
+        Auth.setSession(data.token, data.user);
+        window.location.href = 'member/dashboard.html';
+      } catch (err) {
+        showMessage(errorBox, err.message || 'Registration failed');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create Account';
+      }
+    });
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trainers - Yash Body Grow Admin</title>
+  <link rel="stylesheet" href="../../css/style.css" />
+</head>
+
+<body>
+
+  <nav class="navbar">
+    <div class="container">
+      <a href="dashboard.html" class="logo">YASH<span> BODY GROW</span> <small
+          style="font-size:12px;opacity:.6;">ADMIN</small></a>
+      <div class="nav-links">
+        <span id="admin-name" style="opacity:.8;font-size:14px;"></span>
+        <a href="#" id="logout-link" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff;">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="dash-layout">
+    <aside class="sidebar">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="members.html">Members</a>
+      <a href="trainers.html" class="active">Trainers</a>
+      <a href="plans.html">Membership Plans</a>
+      <a href="attendance.html">Attendance</a>
+      <a href="payments.html">Payments</a>
+      <a href="workouts.html">Workout Plans</a>
+      <a href="diets.html">Diet Plans</a>
+      <a href="progress.html">Progress Tracking</a>
+      <a href="schedule.html">Trainer Schedules</a>
+      <a href="gallery.html">Gallery</a>
+      <a href="testimonials.html">Testimonials</a>
+      <a href="messages.html">Enquiries</a>
+      <a href="notifications.html">Notifications</a>
+      <a href="reports.html">Reports</a>
+      <a href="../settings.html">Change Password</a>
+    </aside>
+
+    <main class="main-content">
+      <div class="page-header">
+        <h1>Trainers</h1>
+        <button class="btn btn-primary" onclick="openAddModal()">+ Add Trainer</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Specialization</th>
+              <th>Experience</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="trainers-tbody">
+            <tr>
+              <td colspan="7" class="empty-state">Loading trainers...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-overlay" id="trainer-modal">
+    <div class="modal">
+      <span class="modal-close" onclick="closeModal('trainer-modal')">&times;</span>
+      <h3 id="trainer-modal-title">Add Trainer</h3>
+      <div id="trainer-error" class="error-msg"></div>
+      <form id="trainer-form">
+        <input type="hidden" id="t-id" />
+        <div class="form-group"><label>Full Name</label><input type="text" id="t-name" required /></div>
+        <div class="form-row">
+          <div class="form-group"><label>Email</label><input type="email" id="t-email" /></div>
+          <div class="form-group"><label>Phone</label><input type="text" id="t-phone" /></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Specialization</label><input type="text" id="t-spec"
+              placeholder="e.g. Strength Training" /></div>
+          <div class="form-group"><label>Experience (years)</label><input type="number" id="t-exp" min="0" value="0" />
+          </div>
+        </div>
+        <div class="form-group"><label>Bio</label><textarea id="t-bio" rows="3"></textarea></div>
+        <div class="form-group">
+          <label><input type="checkbox" id="t-active" checked style="width:auto;" /> Active</label>
+        </div>
+        <div class="form-group" id="t-login-group">
+          <label><input type="checkbox" id="t-create-login" style="width:auto;"
+              onchange="document.getElementById('t-password-group').style.display = this.checked ? 'block' : 'none'" />
+            Create a login account for this trainer</label>
+        </div>
+        <div class="form-group" id="t-password-group" style="display:none;">
+          <label>Login Password</label>
+          <input type="password" id="t-password" minlength="6" placeholder="Required if creating a login" />
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Save Trainer</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="../../js/api.js"></script>
+  <script src="../../js/admin.js"></script>
+  <script>
+    requireAdmin();
+    document.getElementById('admin-name').textContent = Auth.getUser()?.name || '';
+    document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+    async function loadTrainers() {
+      const tbody = document.getElementById('trainers-tbody');
+      tbody.innerHTML = `<tr><td colspan="7" class="empty-state">Loading...</td></tr>`;
+      try {
+        const data = await api.get('/trainers');
+        const trainers = data.trainers || [];
+        if (!trainers.length) {
+          tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No trainers yet.</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = trainers.map(t => `
+        <tr>
+          <td>${t.name}</td>
+          <td>${t.email || '-'}</td>
+          <td>${t.phone || '-'}</td>
+          <td>${t.specialization || '-'}</td>
+          <td>${t.experienceYears || 0} yrs</td>
+          <td><span class="badge badge-${t.isActive ? 'active' : 'expired'}">${t.isActive ? 'active' : 'inactive'}</span></td>
+          <td class="actions">
+            <button class="btn btn-sm btn-dark" onclick='editTrainer(${JSON.stringify(t).replace(/'/g, "&apos;")})'>Edit</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteTrainer('${t._id}', '${t.name.replace(/'/g, "")}')">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state">Error: ${err.message}</td></tr>`;
+      }
+    }
+
+    function openAddModal() {
+      document.getElementById('trainer-modal-title').textContent = 'Add Trainer';
+      document.getElementById('trainer-form').reset();
+      document.getElementById('t-id').value = '';
+      document.getElementById('t-active').checked = true;
+      document.getElementById('t-login-group').style.display = 'block';
+      document.getElementById('t-password-group').style.display = 'none';
+      hideMessage(document.getElementById('trainer-error'));
+      openModal('trainer-modal');
+    }
+
+    function editTrainer(t) {
+      document.getElementById('trainer-modal-title').textContent = 'Edit Trainer';
+      document.getElementById('t-id').value = t._id;
+      document.getElementById('t-name').value = t.name || '';
+      document.getElementById('t-email').value = t.email || '';
+      document.getElementById('t-phone').value = t.phone || '';
+      document.getElementById('t-spec').value = t.specialization || '';
+      document.getElementById('t-exp').value = t.experienceYears || 0;
+      document.getElementById('t-bio').value = t.bio || '';
+      document.getElementById('t-active').checked = !!t.isActive;
+      document.getElementById('t-login-group').style.display = 'none'; // login accounts are set at creation time only
+      document.getElementById('t-password-group').style.display = 'none';
+      hideMessage(document.getElementById('trainer-error'));
+      openModal('trainer-modal');
+    }
+
+    document.getElementById('trainer-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errBox = document.getElementById('trainer-error');
+      hideMessage(errBox);
+      const id = document.getElementById('t-id').value;
+      const payload = {
+        name: document.getElementById('t-name').value.trim(),
+        email: document.getElementById('t-email').value.trim(),
+        phone: document.getElementById('t-phone').value.trim(),
+        specialization: document.getElementById('t-spec').value.trim(),
+        experienceYears: Number(document.getElementById('t-exp').value) || 0,
+        bio: document.getElementById('t-bio').value.trim(),
+        isActive: document.getElementById('t-active').checked
+      };
+      if (!id) {
+        payload.createLogin = document.getElementById('t-create-login').checked;
+        payload.password = document.getElementById('t-password').value;
+      }
+      try {
+        if (id) await api.put(`/trainers/${id}`, payload);
+        else await api.post('/trainers', payload);
+        closeModal('trainer-modal');
+        loadTrainers();
+      } catch (err) {
+        showMessage(errBox, err.message);
+      }
+    });
+
+    async function deleteTrainer(id, name) {
+      if (!confirm(`Delete trainer "${name}"?`)) return;
+      try {
+        await api.delete(`/trainers/${id}`);
+        loadTrainers();
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    loadTrainers();
+  </script>
+</body>
+
+</html>

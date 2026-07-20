@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Notifications - Yash Body Grow Gym</title>
+    <link rel="stylesheet" href="../../css/style.css" />
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="dashboard.html" class="logo">YASH<span> BODY GROW</span></a>
+            <div class="nav-links">
+                <span id="member-name" style="opacity:.8;font-size:14px;"></span>
+                <a href="#" id="logout-link" class="btn btn-outline btn-sm"
+                    style="color:#fff;border-color:#fff;">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dash-layout">
+        <aside class="sidebar">
+            <a href="dashboard.html">My Dashboard</a>
+            <a href="attendance.html">My Attendance</a>
+            <a href="payments.html">My Payments</a>
+            <a href="workouts.html">Workout Plans</a>
+            <a href="diets.html">Diet Plans</a>
+            <a href="progress.html">My Progress</a>
+            <a href="notifications.html" class="active">Notifications</a>
+            <a href="feedback.html">Leave Feedback</a>
+            <a href="../settings.html">Change Password</a>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1>Notifications</h1>
+            </div>
+            <div id="notif-list">
+                <div class="empty-state">Loading...</div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../../js/api.js"></script>
+    <script src="../../js/admin.js"></script>
+    <script>
+        requireMember();
+        document.getElementById('member-name').textContent = Auth.getUser()?.name || '';
+        document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+        async function loadNotifications() {
+            const el = document.getElementById('notif-list');
+            try {
+                const data = await api.get('/notifications/me');
+                const items = data.notifications || [];
+                if (!items.length) {
+                    el.innerHTML = '<div class="card"><div class="empty-state">No notifications right now.</div></div>';
+                    return;
+                }
+                el.innerHTML = items.map(n => `
+        <div class="card" style="margin-bottom:12px;border-left:4px solid var(--primary);">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <h3 style="font-size:16px;">${n.title}</h3>
+            <span style="font-size:12px;color:var(--gray);">${formatDate(n.createdAt)}</span>
+          </div>
+          <p style="color:#555;font-size:14px;margin-top:8px;">${n.message}</p>
+        </div>
+      `).join('');
+            } catch (err) {
+                el.innerHTML = `<div class="empty-state">Error: ${err.message}</div>`;
+            }
+        }
+        loadNotifications();
+    </script>
+</body>
+
+</html>

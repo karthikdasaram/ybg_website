@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Progress Tracking - Yash Body Grow Admin</title>
+    <link rel="stylesheet" href="../../css/style.css" />
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="dashboard.html" class="logo">YASH<span> BODY GROW</span> <small
+                    style="font-size:12px;opacity:.6;">ADMIN</small></a>
+            <div class="nav-links">
+                <span id="admin-name" style="opacity:.8;font-size:14px;"></span>
+                <a href="#" id="logout-link" class="btn btn-outline btn-sm"
+                    style="color:#fff;border-color:#fff;">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dash-layout">
+        <aside class="sidebar">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="members.html">Members</a>
+            <a href="trainers.html">Trainers</a>
+            <a href="plans.html">Membership Plans</a>
+            <a href="attendance.html">Attendance</a>
+            <a href="payments.html">Payments</a>
+            <a href="workouts.html">Workout Plans</a>
+            <a href="diets.html">Diet Plans</a>
+            <a href="progress.html" class="active">Progress Tracking</a>
+            <a href="schedule.html">Trainer Schedules</a>
+            <a href="gallery.html">Gallery</a>
+            <a href="testimonials.html">Testimonials</a>
+            <a href="messages.html">Enquiries</a>
+            <a href="notifications.html">Notifications</a>
+            <a href="reports.html">Reports</a>
+            <a href="../settings.html">Change Password</a>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1>Progress Tracking</h1>
+            </div>
+
+            <div class="toolbar">
+                <select id="p-member" onchange="loadHistory()">
+                    <option value="">Select a member...</option>
+                </select>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Weight (kg)</th>
+                            <th>BMI</th>
+                            <th>Chest</th>
+                            <th>Waist</th>
+                            <th>Hips</th>
+                            <th>Arms</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-tbody">
+                        <tr>
+                            <td colspan="8" class="empty-state">Select a member above.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script src="../../js/api.js"></script>
+    <script src="../../js/admin.js"></script>
+    <script>
+        requireAdmin();
+        document.getElementById('admin-name').textContent = Auth.getUser()?.name || '';
+        document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+        async function loadMemberOptions() {
+            const data = await api.get('/members');
+            document.getElementById('p-member').innerHTML = '<option value="">Select a member...</option>' +
+                (data.members || []).map(m => `<option value="${m._id}">${m.user?.name || 'Unknown'}</option>`).join('');
+        }
+
+        async function loadHistory() {
+            const memberId = document.getElementById('p-member').value;
+            const tbody = document.getElementById('history-tbody');
+            if (!memberId) {
+                tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Select a member above.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Loading...</td></tr>`;
+            try {
+                const data = await api.get(`/progress?memberId=${memberId}`);
+                const records = data.progress || [];
+                if (!records.length) {
+                    tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No entries yet for this member.</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = records.slice().reverse().map(r => `
+        <tr>
+          <td>${formatDate(r.date)}</td>
+          <td>${r.weightKg ?? '-'}</td>
+          <td>${r.bmi ?? '-'}</td>
+          <td>${r.chestCm ?? '-'}</td>
+          <td>${r.waistCm ?? '-'}</td>
+          <td>${r.hipsCm ?? '-'}</td>
+          <td>${r.armsCm ?? '-'}</td>
+          <td>${r.notes || '-'}</td>
+        </tr>
+      `).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Error: ${err.message}</td></tr>`;
+            }
+        }
+
+        loadMemberOptions();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gallery - Yash Body Grow Admin</title>
+    <link rel="stylesheet" href="../../css/style.css" />
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="dashboard.html" class="logo">YASH<span> BODY GROW</span> <small
+                    style="font-size:12px;opacity:.6;">ADMIN</small></a>
+            <div class="nav-links">
+                <span id="admin-name" style="opacity:.8;font-size:14px;"></span>
+                <a href="#" id="logout-link" class="btn btn-outline btn-sm"
+                    style="color:#fff;border-color:#fff;">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dash-layout">
+        <aside class="sidebar">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="members.html">Members</a>
+            <a href="trainers.html">Trainers</a>
+            <a href="plans.html">Membership Plans</a>
+            <a href="attendance.html">Attendance</a>
+            <a href="payments.html">Payments</a>
+            <a href="workouts.html">Workout Plans</a>
+            <a href="diets.html">Diet Plans</a>
+            <a href="progress.html">Progress Tracking</a>
+            <a href="schedule.html">Trainer Schedules</a>
+            <a href="gallery.html" class="active">Gallery</a>
+            <a href="testimonials.html">Testimonials</a>
+            <a href="messages.html">Enquiries</a>
+            <a href="notifications.html">Notifications</a>
+            <a href="reports.html">Reports</a>
+            <a href="../settings.html">Change Password</a>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1>Gallery</h1>
+                <button class="btn btn-primary" onclick="openModal('gallery-modal')">+ Add Item</button>
+            </div>
+            <p style="color:var(--gray);font-size:14px;margin-bottom:16px;">
+                Add a link to an already-hosted image or video (e.g. an Imgur/Cloudinary URL, or a YouTube embed link).
+                This build doesn't include file upload storage — paste a URL instead.
+            </p>
+
+            <div id="gallery-grid" class="grid grid-4">
+                <div class="empty-state">Loading gallery...</div>
+            </div>
+        </main>
+    </div>
+
+    <div class="modal-overlay" id="gallery-modal">
+        <div class="modal">
+            <span class="modal-close" onclick="closeModal('gallery-modal')">&times;</span>
+            <h3>Add Gallery Item</h3>
+            <div id="gallery-error" class="error-msg"></div>
+            <form id="gallery-form">
+                <div class="form-group"><label>Title</label><input type="text" id="g-title"
+                        placeholder="e.g. Weight Room" /></div>
+                <div class="form-group"><label>Type</label>
+                    <select id="g-type">
+                        <option value="image">Image</option>
+                        <option value="video">Video</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Media URL</label><input type="url" id="g-url" placeholder="https://..."
+                        required /></div>
+                <button type="submit" class="btn btn-primary btn-block">Add Item</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="../../js/api.js"></script>
+    <script src="../../js/admin.js"></script>
+    <script>
+        requireAdmin();
+        document.getElementById('admin-name').textContent = Auth.getUser()?.name || '';
+        document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+        async function loadGallery() {
+            const grid = document.getElementById('gallery-grid');
+            try {
+                const data = await api.get('/gallery');
+                const items = data.gallery || [];
+                if (!items.length) {
+                    grid.innerHTML = '<div class="empty-state">No gallery items yet.</div>';
+                    return;
+                }
+                grid.innerHTML = items.map(i => `
+        <div class="card" style="padding:0;overflow:hidden;">
+          ${i.mediaType === 'image'
+                        ? `<img src="${i.url}" alt="${i.title || ''}" style="width:100%;height:140px;object-fit:cover;" onerror="this.style.display='none'"/>`
+                        : `<div style="height:140px;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;">Video: <a href="${i.url}" target="_blank" style="color:#fff;text-decoration:underline;margin-left:6px;">open link</a></div>`}
+          <div style="padding:12px;">
+            <div style="font-weight:600;font-size:14px;">${i.title || 'Untitled'}</div>
+            <button class="btn btn-sm btn-danger" style="margin-top:8px;" onclick="deleteItem('${i._id}')">Delete</button>
+          </div>
+        </div>
+      `).join('');
+            } catch (err) {
+                grid.innerHTML = `<div class="empty-state">Error: ${err.message}</div>`;
+            }
+        }
+
+        document.getElementById('gallery-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errBox = document.getElementById('gallery-error');
+            hideMessage(errBox);
+            try {
+                await api.post('/gallery', {
+                    title: document.getElementById('g-title').value.trim(),
+                    mediaType: document.getElementById('g-type').value,
+                    url: document.getElementById('g-url').value.trim()
+                });
+                closeModal('gallery-modal');
+                document.getElementById('gallery-form').reset();
+                loadGallery();
+            } catch (err) {
+                showMessage(errBox, err.message);
+            }
+        });
+
+        async function deleteItem(id) {
+            if (!confirm('Delete this gallery item?')) return;
+            try {
+                await api.delete(`/gallery/${id}`);
+                loadGallery();
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
+        loadGallery();
+    </script>
+</body>
+
+</html>

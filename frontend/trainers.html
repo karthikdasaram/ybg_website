@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Our Trainers - Yash Body Grow Gym</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+
+  <nav class="navbar">
+    <div class="container">
+      <a href="index.html" class="logo">YASH<span> BODY GROW</span></a>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="plans.html">Plans</a>
+        <a href="trainers.html">Trainers</a>
+        <a href="contact.html">Contact</a>
+        <a href="pages/login.html">Login</a>
+        <a href="pages/register.html" class="btn btn-primary btn-sm">Join Now</a>
+      </div>
+    </div>
+  </nav>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-title">
+        <h2>Meet Our Trainers</h2>
+        <p>Certified experts dedicated to helping you reach your goals</p>
+      </div>
+      <div id="trainers-list" class="grid grid-3">
+        <div class="empty-state">Loading trainers...</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <p>&copy; 2026 PowerFit Gym. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="js/api.js"></script>
+  <script>
+    async function loadTrainers() {
+      const el = document.getElementById('trainers-list');
+      try {
+        const data = await api.get('/trainers');
+        const trainers = (data.trainers || []).filter(t => t.isActive);
+        if (!trainers.length) {
+          el.innerHTML = '<div class="empty-state">No trainers listed yet.</div>';
+          return;
+        }
+        el.innerHTML = trainers.map(t => `
+        <div class="card trainer-card">
+          <div class="trainer-avatar">${t.name.charAt(0).toUpperCase()}</div>
+          <h3>${t.name}</h3>
+          <p style="color:var(--primary);font-weight:600;margin:4px 0;">${t.specialization || 'General Fitness'}</p>
+          <p style="color:#666;font-size:14px;">${t.experienceYears || 0} years experience</p>
+          ${t.bio ? `<p style="color:#666;font-size:13px;margin-top:10px;">${t.bio}</p>` : ''}
+        </div>
+      `).join('');
+      } catch (err) {
+        el.innerHTML = '<div class="empty-state">Could not load trainers right now.</div>';
+      }
+    }
+    loadTrainers();
+  </script>
+</body>
+
+</html>

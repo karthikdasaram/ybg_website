@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Workout Plans - Yash Body Grow Admin</title>
+    <link rel="stylesheet" href="../../css/style.css" />
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="dashboard.html" class="logo">YASH<span> BODY GROW</span> <small
+                    style="font-size:12px;opacity:.6;">ADMIN</small></a>
+            <div class="nav-links">
+                <span id="admin-name" style="opacity:.8;font-size:14px;"></span>
+                <a href="#" id="logout-link" class="btn btn-outline btn-sm"
+                    style="color:#fff;border-color:#fff;">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dash-layout">
+        <aside class="sidebar">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="members.html">Members</a>
+            <a href="trainers.html">Trainers</a>
+            <a href="plans.html">Membership Plans</a>
+            <a href="attendance.html">Attendance</a>
+            <a href="payments.html">Payments</a>
+            <a href="workouts.html" class="active">Workout Plans</a>
+            <a href="diets.html">Diet Plans</a>
+            <a href="progress.html">Progress Tracking</a>
+            <a href="schedule.html">Trainer Schedules</a>
+            <a href="gallery.html">Gallery</a>
+            <a href="testimonials.html">Testimonials</a>
+            <a href="messages.html">Enquiries</a>
+            <a href="notifications.html">Notifications</a>
+            <a href="reports.html">Reports</a>
+            <a href="../settings.html">Change Password</a>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1>Workout Plans</h1>
+                <button class="btn btn-primary" onclick="openAddModal()">+ New Plan</button>
+            </div>
+            <p style="color:var(--gray);font-size:14px;margin-bottom:16px;">Admins can create plans for any member.
+                Trainers manage plans for their own assigned members from the Trainer Portal.</p>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Member</th>
+                            <th>Goal</th>
+                            <th>Days/Week</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="workouts-tbody">
+                        <tr>
+                            <td colspan="6" class="empty-state">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <div class="modal-overlay" id="workout-modal">
+        <div class="modal" style="max-width:560px;">
+            <span class="modal-close" onclick="closeModal('workout-modal')">&times;</span>
+            <h3 id="workout-modal-title">New Workout Plan</h3>
+            <div id="workout-error" class="error-msg"></div>
+            <form id="workout-form">
+                <input type="hidden" id="w-id" />
+                <div class="form-group"><label>Member</label><select id="w-member" required></select></div>
+                <div class="form-group"><label>Title</label><input type="text" id="w-title" required /></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Goal</label><input type="text" id="w-goal" /></div>
+                    <div class="form-group"><label>Days / Week</label><input type="number" id="w-days" min="1" max="7"
+                            value="3" /></div>
+                </div>
+                <div class="form-group">
+                    <label>Exercises (one per line: Name | Sets | Reps | Notes)</label>
+                    <textarea id="w-exercises" rows="5"></textarea>
+                </div>
+                <div class="form-group"><label>Notes</label><textarea id="w-notes" rows="2"></textarea></div>
+                <button type="submit" class="btn btn-primary btn-block">Save Plan</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="../../js/api.js"></script>
+    <script src="../../js/admin.js"></script>
+    <script>
+        requireAdmin();
+        document.getElementById('admin-name').textContent = Auth.getUser()?.name || '';
+        document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); Auth.logout(); });
+
+        async function loadMemberOptions() {
+            const data = await api.get('/members');
+            document.getElementById('w-member').innerHTML = (data.members || [])
+                .map(m => `<option value="${m._id}">${m.user?.name || 'Unknown'}</option>`).join('');
+        }
+
+        function parseExercises(text) {
+            return text.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
+                const [name, sets, reps, notes] = line.split('|').map(p => (p || '').trim());
+                return { name: name || 'Exercise', sets: Number(sets) || 3, reps: reps || '', notes: notes || '' };
+            });
+        }
+        function exercisesToText(exercises) {
+            return (exercises || []).map(e => `${e.name} | ${e.sets} | ${e.reps} | ${e.notes}`).join('\n');
+        }
+
+        async function loadWorkouts() {
+            const tbody = document.getElementById('workouts-tbody');
+            tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Loading...</td></tr>`;
+            try {
+                const data = await api.get('/workouts');
+                const plans = data.workoutPlans || [];
+                if (!plans.length) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No workout plans yet.</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = plans.map(p => `
+        <tr>
+          <td>${p.title}</td>
+          <td>${p.member?.user?.name || '-'}</td>
+          <td>${p.goal || '-'}</td>
+          <td>${p.daysPerWeek}</td>
+          <td><span class="badge badge-${p.isActive ? 'active' : 'expired'}">${p.isActive ? 'active' : 'inactive'}</span></td>
+          <td class="actions">
+            <button class="btn btn-sm btn-dark" onclick='editWorkout(${JSON.stringify(p).replace(/'/g, "&apos;")})'>Edit</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteWorkout('${p._id}')">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Error: ${err.message}</td></tr>`;
+            }
+        }
+
+        function openAddModal() {
+            document.getElementById('workout-modal-title').textContent = 'New Workout Plan';
+            document.getElementById('workout-form').reset();
+            document.getElementById('w-id').value = '';
+            hideMessage(document.getElementById('workout-error'));
+            openModal('workout-modal');
+        }
+
+        function editWorkout(p) {
+            document.getElementById('workout-modal-title').textContent = 'Edit Workout Plan';
+            document.getElementById('w-id').value = p._id;
+            document.getElementById('w-member').value = p.member?._id || p.member;
+            document.getElementById('w-title').value = p.title;
+            document.getElementById('w-goal').value = p.goal || '';
+            document.getElementById('w-days').value = p.daysPerWeek || 3;
+            document.getElementById('w-exercises').value = exercisesToText(p.exercises);
+            document.getElementById('w-notes').value = p.notes || '';
+            hideMessage(document.getElementById('workout-error'));
+            openModal('workout-modal');
+        }
+
+        document.getElementById('workout-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errBox = document.getElementById('workout-error');
+            hideMessage(errBox);
+            const id = document.getElementById('w-id').value;
+            const payload = {
+                memberId: document.getElementById('w-member').value,
+                title: document.getElementById('w-title').value.trim(),
+                goal: document.getElementById('w-goal').value.trim(),
+                daysPerWeek: Number(document.getElementById('w-days').value) || 3,
+                exercises: parseExercises(document.getElementById('w-exercises').value),
+                notes: document.getElementById('w-notes').value.trim()
+            };
+            try {
+                if (id) await api.put(`/workouts/${id}`, payload);
+                else await api.post('/workouts', payload);
+                closeModal('workout-modal');
+                loadWorkouts();
+            } catch (err) {
+                showMessage(errBox, err.message);
+            }
+        });
+
+        async function deleteWorkout(id) {
+            if (!confirm('Delete this workout plan?')) return;
+            try {
+                await api.delete(`/workouts/${id}`);
+                loadWorkouts();
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
+        loadMemberOptions();
+        loadWorkouts();
+    </script>
+</body>
+
+</html>
