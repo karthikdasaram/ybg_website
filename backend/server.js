@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const connectDB = require('./config/db');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
@@ -11,15 +12,15 @@ const planRoutes = require('./routes/planRoutes');
 const attendanceRoutes = require('./routes/attendanceRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
-const workoutRoutes = require('./routes/Workoutroutes');
-const dietRoutes = require('./routes/Dietroutes');
-const progressRoutes = require('./routes/Progressroutes');
-const scheduleRoutes = require('./routes/Scheduleroutes');
-const galleryRoutes = require('./routes/Galleryroutes');
-const testimonialRoutes = require('./routes/Testimonialroutes');
-const contactRoutes = require('./routes/Contactroutes');
-const notificationRoutes = require('./routes/Notificationroutes');
-const reportRoutes = require('./routes/Reportroutes');
+const workoutRoutes = require('./routes/workoutRoutes');
+const dietRoutes = require('./routes/dietRoutes');
+const progressRoutes = require('./routes/progressRoutes');
+const scheduleRoutes = require('./routes/scheduleRoutes');
+const galleryRoutes = require('./routes/galleryRoutes');
+const testimonialRoutes = require('./routes/testimonialRoutes');
+const contactRoutes = require('./routes/contactRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const reportRoutes = require('./routes/reportRoutes');
 
 const app = express();
 
@@ -31,13 +32,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Home Route
-app.get("/", (req, res) => {
-  res.json({
-    status: "ok",
-    message: "Welcome to Gym Management API"
-  });
-});
+// Serve the frontend (plain HTML/CSS/JS) directly from this same server.
+// Expects the project layout: <repo root>/backend and <repo root>/frontend as siblings.
+app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -1,8 +1,12 @@
 /**
  * Central place to configure and call the backend API.
- * Change API_BASE_URL if your backend runs somewhere other than localhost:5000.
+ * Relative path: this assumes the frontend is served by the SAME Express
+ * server as the API (see backend/server.js, which serves the frontend as
+ * static files). That means this works unchanged whether you're running
+ * locally (http://localhost:5000) or deployed (https://your-app.onrender.com)
+ * -- no URL to update when you deploy.
  */
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = '/api';
 
 const Auth = {
   getToken() {
@@ -108,7 +112,7 @@ function formatDate(dateStr) {
 }
 
 function formatCurrency(amount) {
-  return '₹' + Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return '$' + Number(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function showMessage(el, message, isError = true) {
